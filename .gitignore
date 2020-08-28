@@ -1,0 +1,6 @@
+# output files
+resources/
+reviews.csv
+
+# libraries
+node_modules/

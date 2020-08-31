@@ -2,8 +2,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from pandas import read_csv
-
+import json
+from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
 
 class Visualize():
     sns.set_style = 'seaborn-whitegrid'
@@ -55,13 +60,27 @@ class Visualize():
         plt.hist(count,100,alpha = 0.5)
         plt.xlim(right=500)
         plt.show()
-
+    
+    def plot_word_cloud(self,filename):
+        text = ""
+        with open(filename, 'r') as f:
+            data = json.load(f)
+        for review in data:
+            for phrase in review['KeyPhrases']:
+                if(phrase['Score']>0.9):
+                    text = text + phrase["Text"] + " "
+        stop_words = stopwords.words('english')
+        stop_words.extend(['Roger','app','issue','Rogers'])
+        cloud = WordCloud(stopwords=stop_words).generate(text)
+        plt.imshow(cloud, interpolation='bilinear')
+        plt.axis("off")
+        plt.show()
 
 vis = Visualize()
-series = read_csv('reviews.csv',parse_dates=True,squeeze=True)
-series["date"] = pd.to_datetime(series["date"]) # format date
-vis.get_average_score_per_month(series,'date','score')
-vis.plot_word_count(series,"text")
-
+# series = read_csv('reviews.csv',parse_dates=True,squeeze=True)
+# series["date"] = pd.to_datetime(series["date"]) # format date
+# vis.get_average_score_per_month(series,'date','score')
+# vis.plot_word_count(series,"text")
+vis.plot_word_cloud("key_phrases.json")
 
 # plot_x_y(series,'date','score')

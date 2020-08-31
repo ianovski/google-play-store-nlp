@@ -31,7 +31,13 @@ class Comprehend():
             if(not index%5):
                 print("Line number = {}".format(index))
             with open(output_file, 'a') as outfile:
+                if(index==1):
+                    outfile.write('[')
                 json.dump(key_phrase, outfile, indent=2)
                 if(index!=len(series)):
                     outfile.write(',\n')
+                else:
+                    outfie.write(']')
             index += 1
+    
+    

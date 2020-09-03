@@ -7,7 +7,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
 import nltk
-nltk.download('stopwords')
+# nltk.download('stopwords') # Uncomment to download stopwords (only do once)
 from nltk.corpus import stopwords
 
 class Visualize():
@@ -60,8 +60,8 @@ class Visualize():
         plt.hist(count,100,alpha = 0.5)
         plt.xlim(right=500)
         plt.show()
-    
-    def plot_word_cloud(self,filename):
+
+    def plot_word_cloud(self,filename,add_stop=None):
         text = ""
         with open(filename, 'r') as f:
             data = json.load(f)
@@ -70,17 +70,47 @@ class Visualize():
                 if(phrase['Score']>0.9):
                     text = text + phrase["Text"] + " "
         stop_words = stopwords.words('english')
-        stop_words.extend(['Roger','app','issue','Rogers'])
+        stop_words.extend(add_stop)
         cloud = WordCloud(stopwords=stop_words).generate(text)
         plt.imshow(cloud, interpolation='bilinear')
         plt.axis("off")
         plt.show()
+    
+    def get_mean_rating_for_keywords(self,filename,labeled_keywords):
+        total_score, total_reviews = 0,0
+        reviews = read_csv(filename,parse_dates=True,squeeze=True)
+        for idx, review in reviews.iterrows():
+            # print("text = {}\nscore = {}".format(review['text'],review['score']))
+            if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
+                total_score += review['score']
+                total_reviews += 1
+        final = {
+            'total_reviews':total_reviews,
+            'mean_score':total_score/total_reviews,
+            'category':labeled_keywords['category']
+        }
+        return(final)
+
+    def plot_mean_ratings(self,filename,labeled_keywords):
+        # Store number of categories
+        num_categories = len(labeled_keywords)
+        # Store average star ratings
+        average_star_ratings = {}
+        for label in labeled_keywords:
+            mean_rating_df = get_mean_rating_for_keywords(label)
+                
 
 vis = Visualize()
 # series = read_csv('reviews.csv',parse_dates=True,squeeze=True)
 # series["date"] = pd.to_datetime(series["date"]) # format date
 # vis.get_average_score_per_month(series,'date','score')
 # vis.plot_word_count(series,"text")
-vis.plot_word_cloud("key_phrases.json")
+# vis.plot_word_cloud("key_phrases.json",['word1','words2'])
+login_keywords = {"category":"login","keywords":["login","sign","signin"]}
+security_keywords = {"category":"security","keywords":["alarm","arm","security","arming"]}
+app_keywords = {0:login_keywords,1:security_keywords}
+print("app_keywords length = {}".format(len(app_keywords)))
+print("categories = {}".format(app_keywords))
+# print(vis.get_mean_rating_for_keywords("reviews.csv",login_keywords))
 
 # plot_x_y(series,'date','score')

@@ -31,7 +31,7 @@ class Visualize():
             'ytick.labelsize':10})
 
     def show_values_barplot(self,axs, space):
-        def _show_on_plot(self,ax):
+        def _show_on_plot(ax):
             for p in ax.patches:
                 _x = p.get_x() + p.get_width() + float(space)
                 _y = p.get_y() + p.get_height()
@@ -80,24 +80,47 @@ class Visualize():
         total_score, total_reviews = 0,0
         reviews = read_csv(filename,parse_dates=True,squeeze=True)
         for idx, review in reviews.iterrows():
-            # print("text = {}\nscore = {}".format(review['text'],review['score']))
             if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
                 total_score += review['score']
                 total_reviews += 1
         final = {
             'total_reviews':total_reviews,
             'mean_score':total_score/total_reviews,
-            'category':labeled_keywords['category']
         }
         return(final)
 
     def plot_mean_ratings(self,filename,labeled_keywords):
+        ''' from aws ml workshop '''
         # Store number of categories
         num_categories = len(labeled_keywords)
         # Store average star ratings
         average_star_ratings = {}
         for label in labeled_keywords:
-            mean_rating_df = get_mean_rating_for_keywords(label)
+            average_star_ratings[label] = self.get_mean_rating_for_keywords(filename,labeled_keywords[label]) 
+        df = pd.DataFrame.from_dict(average_star_ratings,orient='index')
+        print("[debug] df = \n{}".format(df))
+        print("[debug df.index = {}".format(df.index))
+        barplot = sns.barplot(y=df.index, x='mean_score', data = df, saturation=1)
+        if num_categories < 10:
+            sns.set(rc={'figure.figsize':(10.0, 5.0)})
+    
+        # Set title and x-axis ticks 
+        plt.title('Average Rating by Product Category')
+        plt.xticks([1, 2, 3, 4, 5], ['1-Star', '2-Star', '3-Star','4-Star','5-Star'])
+
+        # Helper code to show actual values afters bars 
+        self.show_values_barplot(barplot, 0.1)
+
+        plt.xlabel("Average Rating")
+        plt.ylabel("Product Category")
+
+        # Export plot if needed
+        plt.tight_layout()
+        # plt.savefig('avg_ratings_per_category.png', dpi=300)
+
+        # Show graphic
+        print("[debug] barplot = {}".format(barplot))
+        plt.show()
                 
 
 vis = Visualize()
@@ -106,11 +129,15 @@ vis = Visualize()
 # vis.get_average_score_per_month(series,'date','score')
 # vis.plot_word_count(series,"text")
 # vis.plot_word_cloud("key_phrases.json",['word1','words2'])
-login_keywords = {"category":"login","keywords":["login","sign","signin"]}
-security_keywords = {"category":"security","keywords":["alarm","arm","security","arming"]}
-app_keywords = {0:login_keywords,1:security_keywords}
-print("app_keywords length = {}".format(len(app_keywords)))
-print("categories = {}".format(app_keywords))
+# login_keywords = {"category":"login","keywords":}
+# security_keywords = {"category":"security","keywords":}
+app_keywords = {'login':
+            {"keywords":["login","sign","signin"]},
+            "security":
+            {"keywords":["alarm","arm","security","arming"]}}
+# print("app_keywords length = {}".format(len(app_keywords)))
+# print("categories = {}".format(app_keywords))
 # print(vis.get_mean_rating_for_keywords("reviews.csv",login_keywords))
+vis.plot_mean_ratings("review_small.csv",app_keywords)
 
 # plot_x_y(series,'date','score')

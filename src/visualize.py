@@ -98,42 +98,62 @@ class Visualize():
 
     def plot_mean_ratings(self,filename,labeled_keywords):
         ''' from aws ml workshop '''
-        # Store number of categories
         num_categories = len(labeled_keywords)
         # Store average star ratings
         average_star_ratings = {}
         for label in labeled_keywords:
             average_star_ratings[label] = self.get_mean_rating_for_keywords(filename,labeled_keywords[label]) 
         df = pd.DataFrame.from_dict(average_star_ratings,orient='index')
-        print("[debug] df = \n{}".format(df))
-        print("[debug df.index = {}".format(df.index))
+        # Create plot
         barplot = sns.barplot(y=df.index, x='mean_score', data = df, saturation=1)
         if num_categories < 10:
             sns.set(rc={'figure.figsize':(10.0, 5.0)})
-    
         # Set title and x-axis ticks 
         plt.title('Average Rating by Product Category')
         plt.xticks([1, 2, 3, 4, 5], ['1-Star', '2-Star', '3-Star','4-Star','5-Star'])
-
         # Helper code to show actual values afters bars 
         self.show_values_barplot(barplot, 0.1)
-
         plt.xlabel("Average Rating")
         plt.ylabel("Product Category")
-
         # Export plot if needed
         plt.tight_layout()
         # plt.savefig('avg_ratings_per_category.png', dpi=300)
-
         # Show graphic
-        print("[debug] barplot = {}".format(barplot))
         plt.show()
     
     def add_keywords(self,category,keywords):
         self.keywords[category] = {"keywords":keywords}
-        print(self.keywords)
 
+    def plot_category_count(self,filename,labeled_keywords):
+        """ From AWS ml workshop"""
+        num_categories = len(labeled_keywords)
+        # Store average star ratings
+        average_star_ratings = {}
+        for label in labeled_keywords:
+            average_star_ratings[label] = self.get_mean_rating_for_keywords(filename,labeled_keywords[label]) 
+        df = pd.DataFrame.from_dict(average_star_ratings,orient='index')
+        barplot = sns.barplot(y=df.index, x='total_reviews', data = df, saturation=1)
 
+        if num_categories < 10:
+            sns.set(rc={'figure.figsize':(10.0, 5.0)})
+        # Set title
+        plt.title("Number of Ratings per Product Category for Subset of Product Categories")
+
+        # Set x-axis ticks to match scale 
+        plt.xticks([100, 200, 300, 400], ['100', '200', '300', '400'])
+        plt.xlim(0, 420)
+
+        plt.xlabel("Number of Ratings")
+        plt.ylabel("Product Category")
+
+        plt.tight_layout()
+
+        # Export plot if needed
+        # plt.savefig('ratings_per_category.png', dpi=300)
+
+        # Show the barplot
+        plt.show()
+        
 vis = Visualize()
 series = read_csv('reviews.csv',parse_dates=True,squeeze=True)
 series["date"] = pd.to_datetime(series["date"]) # format date
@@ -149,9 +169,5 @@ vis.add_keywords('automation',["rule","scene","automat"])
 vis.add_keywords('ios',["ios","iphone"])
 vis.add_keywords('android',["android","pixel","samsun","huawei"])
 
-# print("app_keywords length = {}".format(len(app_keywords)))
-# print("categories = {}".format(app_keywords))
-# print(vis.get_mean_rating_for_keywords("reviews.csv",login_keywords))
 vis.plot_mean_ratings("reviews.csv",vis.keywords)
-
-# plot_x_y(series,'date','score')
+vis.plot_category_count("reviews.csv",vis.keywords)

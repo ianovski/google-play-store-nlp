@@ -30,6 +30,9 @@ class Visualize():
             'font.size':10,
             'ytick.labelsize':10})
 
+    def __init__(self):
+        self.keywords = {}
+
     def show_values_barplot(self,axs, space):
         def _show_on_plot(ax):
             for p in ax.patches:
@@ -83,9 +86,13 @@ class Visualize():
             if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
                 total_score += review['score']
                 total_reviews += 1
+        try:
+            mean_score = total_score/total_reviews
+        except ZeroDivisionError:
+            mean_score = 0
         final = {
             'total_reviews':total_reviews,
-            'mean_score':total_score/total_reviews,
+            'mean_score':mean_score,
         }
         return(final)
 
@@ -121,23 +128,30 @@ class Visualize():
         # Show graphic
         print("[debug] barplot = {}".format(barplot))
         plt.show()
-                
+    
+    def add_keywords(self,category,keywords):
+        self.keywords[category] = {"keywords":keywords}
+        print(self.keywords)
+
 
 vis = Visualize()
-# series = read_csv('reviews.csv',parse_dates=True,squeeze=True)
-# series["date"] = pd.to_datetime(series["date"]) # format date
-# vis.get_average_score_per_month(series,'date','score')
-# vis.plot_word_count(series,"text")
-# vis.plot_word_cloud("key_phrases.json",['word1','words2'])
-# login_keywords = {"category":"login","keywords":}
-# security_keywords = {"category":"security","keywords":}
-app_keywords = {'login':
-            {"keywords":["login","sign","signin"]},
-            "security":
-            {"keywords":["alarm","arm","security","arming"]}}
+series = read_csv('reviews.csv',parse_dates=True,squeeze=True)
+series["date"] = pd.to_datetime(series["date"]) # format date
+vis.get_average_score_per_month(series,'date','score')
+vis.plot_word_count(series,"text")
+stop_words = ["word1","word2"]
+vis.plot_word_cloud("key_phrases.json",stop_words)
+
+vis.add_keywords('login',["login","sign","signin"])
+vis.add_keywords('security',["alarm","arm","security","arming"])
+vis.add_keywords('cameras',["cam","video","record"])
+vis.add_keywords('automation',["rule","scene","automat"])
+vis.add_keywords('ios',["ios","iphone"])
+vis.add_keywords('android',["android","pixel","samsun","huawei"])
+
 # print("app_keywords length = {}".format(len(app_keywords)))
 # print("categories = {}".format(app_keywords))
 # print(vis.get_mean_rating_for_keywords("reviews.csv",login_keywords))
-vis.plot_mean_ratings("review_small.csv",app_keywords)
+vis.plot_mean_ratings("reviews.csv",vis.keywords)
 
 # plot_x_y(series,'date','score')

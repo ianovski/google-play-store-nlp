@@ -154,10 +154,8 @@ class Visualize():
         # Show the barplot
         plt.show()
     
-    def sum_ratings_per_cetegory(self,filename,label,labeled_keywords):
-        print("debug: labeled_keywords = {}".format(labeled_keywords))
-        ratings_per_category = {}
-        ratings_per_category[label] = {'1star':0,
+    def sum_ratings_per_cetegory(self,filename,labeled_keywords):
+        ratings_per_category = {'1star':0,
                 '2star':0,
                 '3star':0,
                 '4star':0,
@@ -166,114 +164,65 @@ class Visualize():
         for idx, review in reviews.iterrows():
             if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
                 if(review['score']==1):
-                    ratings_per_category[label]['1star'] +=1
-                if(review['score']==2):
-                    ratings_per_category[label]['2star'] +=1
-                if(review['score']==3):
-                    ratings_per_category[label]['3star'] +=1
-                if(review['score']==4):
-                    ratings_per_category[label]['4star'] +=1
-                if(review['score']==5):
-                    ratings_per_category[label]['5star'] +=1
-        print(ratings_per_category)
+                    ratings_per_category['1star'] +=1
+                elif(review['score']==2):
+                    ratings_per_category['2star'] +=1
+                elif(review['score']==3):
+                    ratings_per_category['3star'] +=1
+                elif(review['score']==4):
+                    ratings_per_category['4star'] +=1
+                elif(review['score']==5):
+                    ratings_per_category['5star'] +=1
+        return(ratings_per_category)
 
     def plot_rating_distribution_per_category(self,filename,labeled_keywords):
+        """Partially from AWS ML workshop"""
         ratings_per_category = {}
         for label in labeled_keywords:
-            ratings_per_category[label] = self.sum_ratings_per_cetegory(filename,label,labeled_keywords[label])
+            ratings_per_category[label] = self.sum_ratings_per_cetegory(filename,labeled_keywords[label])
 
-    # def plot_rating_distribution_per_category(self,filename,labeled_keywords):
-    #     """ From AWS ml workshop """ 
-    #     average_star_ratings = {}
-    #     for label in labeled_keywords:
-    #         average_star_ratings[label] = self.get_mean_rating_for_keywords(filename,labeled_keywords[label]) 
-
-    #     # Sort distribution by highest average rating per category
-    #     sorted_distribution = {}
-    #     df = pd.DataFrame.from_dict(average_star_ratings,orient='index')
-
-    #     print(df)
-    #     # Create grouped DataFrames by category and by star rating
-    #     grouped_category = df.groupby(df.index)
-    #     grouped_star = df.groupby('score')
-
-    #     # Create sum of ratings per star rating
-    #     df_sum = df.groupby(['score']).sum()
-
-    #     # Calculate total number of star ratings
-    #     total = df_sum['total_reviews'].sum()
+        df = pd.DataFrame.from_dict(ratings_per_category,orient='index')
+        categories = ratings_per_category.keys()
+        star1 = df['1star'].tolist()
+        star2 = df['2star'].tolist()
+        star3 = df['3star'].tolist()
+        star4 = df['4star'].tolist()
+        star5 = df['5star'].tolist()
+        total = df.sum().sum() # Total number of all reviews
         
-    #     distribution = {}
-    #     count_reviews_per_star = []
-    #     i=0
-    
-    #     for category, ratings in grouped_category:
-    #         count_reviews_per_star = []
-    #         for star in ratings['mean_score']:
-    #             count_reviews_per_star.append(ratings.at[i, 'total_reviews'])
-    #             i=i+1;
-    #         distribution[category] = count_reviews_per_star
+        proportion_star1 = np.true_divide(star1, total) * 100
+        proportion_star2 = np.true_divide(star2, total) * 100
+        proportion_star3 = np.true_divide(star3, total) * 100
+        proportion_star4 = np.true_divide(star4, total) * 100
+        proportion_star5 = np.true_divide(star5, total) * 100
 
-    #     average_star_ratings = df
-    #     average_star_ratings.iloc[:,0]
-    #     for index, value in average_star_ratings.iloc[:,0].items():
-    #         sorted_distribution[value] = distribution[value]
+        colors = ['red', 'purple','blue','orange','green']
 
-    #     # Build array per star across all categories
-    #     star1 = []
-    #     star2 = []
-    #     star3 = []
-    #     star4 = []
-    #     star5 = []
+        # The position of the bars on the x-axis
+        r = range(len(categories))
+        barHeight = 1
+        num_categories = df.shape[0]
+        if num_categories > 10:
+            plt.figure(figsize=(10,10))
+        else: 
+            plt.figure(figsize=(10,5))
 
-    #     for k in sorted_distribution.keys():
-    #         stars = sorted_distribution.get(k)
-    #         star5.append(stars[0])
-    #         star4.append(stars[1])
-    #         star3.append(stars[2])
-    #         star2.append(stars[3])
-    #         star1.append(stars[4])
-        
-    #     # Plot the distributions of star ratings per product category
-    #     categories = sorted_distribution.keys()
+        ax5 = plt.barh(r, proportion_star5, color=colors[4], edgecolor='white', height=barHeight, label='5-Star Ratings')
+        ax4 = plt.barh(r, proportion_star4, left=proportion_star5, color=colors[3], edgecolor='white', height=barHeight, label='4-Star Ratings')
+        ax3 = plt.barh(r, proportion_star3, left=proportion_star5+proportion_star4, color=colors[2], edgecolor='white', height=barHeight, label='3-Star Ratings')
+        ax2 = plt.barh(r, proportion_star2, left=proportion_star5+proportion_star4+proportion_star3, color=colors[1], edgecolor='white', height=barHeight, label='2-Star Ratings')
+        ax1 = plt.barh(r, proportion_star1, left=proportion_star5+proportion_star4+proportion_star3+proportion_star2, color=colors[0], edgecolor='white', height=barHeight, label="1-Star Ratings")
 
-    #     total = np.array(star1) + np.array(star2) + np.array(star3) + np.array(star4) + np.array(star5)
+        plt.title("Distribution of Reviews Per Rating Per Category",fontsize='16')
+        plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
+        plt.yticks(r, categories, fontweight='regular')
 
-    #     proportion_star1 = np.true_divide(star1, total) * 100
-    #     proportion_star2 = np.true_divide(star2, total) * 100
-    #     proportion_star3 = np.true_divide(star3, total) * 100
-    #     proportion_star4 = np.true_divide(star4, total) * 100
-    #     proportion_star5 = np.true_divide(star5, total) * 100
+        plt.xlabel("% Breakdown of Star Ratings", fontsize='14')
+        plt.gca().invert_yaxis()
+        plt.tight_layout()
 
-    #     # Add colors
-    #     colors = ['red', 'purple','blue','orange','green']
-
-    #     # The position of the bars on the x-axis
-    #     r = range(len(categories))
-    #     barHeight = 1
-
-    #     # Plot bars
-    #     if num_categories > 10:
-    #         plt.figure(figsize=(10,10))
-    #     else: 
-    #         plt.figure(figsize=(10,5))
-
-    #     ax5 = plt.barh(r, proportion_star5, color=colors[4], edgecolor='white', height=barHeight, label='5-Star Ratings')
-    #     ax4 = plt.barh(r, proportion_star4, left=proportion_star5, color=colors[3], edgecolor='white', height=barHeight, label='4-Star Ratings')
-    #     ax3 = plt.barh(r, proportion_star3, left=proportion_star5+proportion_star4, color=colors[2], edgecolor='white', height=barHeight, label='3-Star Ratings')
-    #     ax2 = plt.barh(r, proportion_star2, left=proportion_star5+proportion_star4+proportion_star3, color=colors[1], edgecolor='white', height=barHeight, label='2-Star Ratings')
-    #     ax1 = plt.barh(r, proportion_star1, left=proportion_star5+proportion_star4+proportion_star3+proportion_star2, color=colors[0], edgecolor='white', height=barHeight, label="1-Star Ratings")
-
-    #     plt.title("Distribution of Reviews Per Rating Per Category",fontsize='16')
-    #     plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
-    #     plt.yticks(r, categories, fontweight='regular')
-
-    #     plt.xlabel("% Breakdown of Star Ratings", fontsize='14')
-    #     plt.gca().invert_yaxis()
-    #     plt.tight_layout()
-
-    #     # plt.savefig('proportion_star_per_category.png', dpi=300)
-    #     plt.show()
+        # plt.savefig('proportion_star_per_category.png', dpi=300)
+        plt.show()
         
 vis = Visualize()
 # vis.get_average_score_per_month(series,'date','score')

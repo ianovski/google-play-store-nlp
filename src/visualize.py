@@ -7,7 +7,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
 import nltk
-# nltk.download('stopwords') # Uncomment to download stopwords (only do once)
+# nltk.download('stopwords') # Uncomment to download stopwords (only use once)
 from nltk.corpus import stopwords
 
 class Visualize():
@@ -155,12 +155,17 @@ class Visualize():
         plt.show()
     
     def sum_ratings_per_cetegory(self,filename,labeled_keywords):
+        # Create empty dictionary
         ratings_per_category = {'1star':0,
                 '2star':0,
                 '3star':0,
                 '4star':0,
                 '5star':0}
+        
+        # Read csv file
         reviews = read_csv(filename,parse_dates=True,squeeze=True)
+
+        # Populate dictionary with user ratings
         for idx, review in reviews.iterrows():
             if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
                 if(review['score']==1):
@@ -178,18 +183,25 @@ class Visualize():
     def plot_rating_distribution_per_category(self,filename,labeled_keywords):
         """Partially from AWS ML workshop"""
         ratings_per_category = {}
+
+        # Populate dictionary for each categories' user ratings
         for label in labeled_keywords:
             ratings_per_category[label] = self.sum_ratings_per_cetegory(filename,labeled_keywords[label])
 
         df = pd.DataFrame.from_dict(ratings_per_category,orient='index')
         categories = ratings_per_category.keys()
+
+        # Convert ratings to list
         star1 = df['1star'].tolist()
         star2 = df['2star'].tolist()
         star3 = df['3star'].tolist()
         star4 = df['4star'].tolist()
         star5 = df['5star'].tolist()
-        total = df.sum().sum() # Total number of all reviews
+
+        # Calculate total number of reviews for all categories
+        total = df.sum().sum()
         
+        # Calculate relative value for eahc rating
         proportion_star1 = np.true_divide(star1, total) * 100
         proportion_star2 = np.true_divide(star2, total) * 100
         proportion_star3 = np.true_divide(star3, total) * 100
@@ -207,6 +219,7 @@ class Visualize():
         else: 
             plt.figure(figsize=(10,5))
 
+        # plot horizontal bar graph
         ax5 = plt.barh(r, proportion_star5, color=colors[4], edgecolor='white', height=barHeight, label='5-Star Ratings')
         ax4 = plt.barh(r, proportion_star4, left=proportion_star5, color=colors[3], edgecolor='white', height=barHeight, label='4-Star Ratings')
         ax3 = plt.barh(r, proportion_star3, left=proportion_star5+proportion_star4, color=colors[2], edgecolor='white', height=barHeight, label='3-Star Ratings')

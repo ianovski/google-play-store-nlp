@@ -58,10 +58,11 @@ class Visualize():
         mean_date.plot()
         plt.show()
 
-    def plot_word_count(self,df,index):
-        count = df[index].str.len()
+    def plot_word_count(self,filename,index):
+        reviews = read_csv(filename,parse_dates=True,squeeze=True)
+        count = reviews[index].str.len()
         plt.hist(count,100,alpha = 0.5)
-        plt.xlim(right=500)
+        plt.xlim(0, 500)
         plt.show()
 
     def plot_word_cloud(self,filename,add_stop=None):
@@ -239,7 +240,8 @@ class Visualize():
         
 vis = Visualize()
 # vis.get_average_score_per_month(series,'date','score')
-# vis.plot_word_count(series,"text")
+
+vis.plot_word_count("reviews.csv","text")
 # stop_words = ["word1","word2"]
 # vis.plot_word_cloud("key_phrases.json",stop_words)
 

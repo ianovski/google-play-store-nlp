@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import nltk
 # nltk.download('stopwords') # Uncomment to download stopwords (only use once)
 from nltk.corpus import stopwords
+import gensim
 
 class Visualize():
     sns.set_style = 'seaborn-whitegrid'
@@ -32,6 +33,8 @@ class Visualize():
 
     def __init__(self):
         self.keywords = {}
+        self.model_flag = False
+        self.model = None
 
     def show_values_barplot(self,axs, space):
         def _show_on_plot(ax):
@@ -122,7 +125,19 @@ class Visualize():
         # Show graphic
         plt.show()
     
+    # Get similar keywords with w2v
+    def get_similar_words(self,word):
+        # Import model if not already imported
+        if(not self.model_flag):
+            self.model = gensim.models.KeyedVectors.load_word2vec_format('resources/model/GoogleNews-vectors-negative300.bin', binary=True)
+            self.model_flag = True
+        similar_words = self.model.wv.most_similar(word)
+        similar_words = [a_tuple[0] for a_tuple in similar_words]
+        return(similar_words)
+
     def add_keywords(self,category,keywords):
+        similar_words = self.get_similar_words(category)
+        keywords = keywords + similar_words
         self.keywords[category] = {"keywords":keywords}
 
     def plot_category_count(self,filename,labeled_keywords):

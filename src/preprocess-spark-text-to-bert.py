@@ -1,4 +1,4 @@
-# This code is taken from data-science-on-aws: https://github.com/data-science-on-aws/workshop
+# Parts of this code taken from data-science-on-aws: https://github.com/data-science-on-aws/workshop
 
 from __future__ import print_function
 from __future__ import unicode_literals
@@ -11,11 +11,14 @@ import csv
 import collections
 import subprocess
 import sys
+import zipfile
+import wget
+import pandas as pd
+from pandas import read_csv
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pip', '--upgrade'])
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'wrapt', '--upgrade', '--ignore-installed'])
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'tensorflow==2.1.0', '--ignore-installed'])
 import tensorflow as tf
-print(tf.__version__)
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'transformers==2.8.0'])
 from transformers import DistilBertTokenizer
 
@@ -27,6 +30,17 @@ from pyspark.ml.linalg import DenseVector
 from pyspark.sql.functions import split
 from pyspark.sql.functions import udf, col
 from pyspark.sql.types import *
+
+if(not os.path.isfile('src/modeling.py')):
+    wget.download('https://raw.githubusercontent.com/google-research/bert/master/modeling.py',out='src/modeling.py')
+if(not os.path.isfile('src/extract_features.py')):
+    wget.download('https://raw.githubusercontent.com/google-research/bert/master/extract_features.py',out='src/extract_features.py')
+if(not os.path.isfile('src/tokenization.py')):
+    wget.download('https://raw.githubusercontent.com/google-research/bert/master/tokenization.py',out='src/tokenization.py')
+    
+import modeling
+import extract_features
+import tokenization
 
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 
@@ -214,34 +228,75 @@ def transform(spark, s3_input_data, s3_output_train_data, s3_output_validation_d
     restored_test_df = spark.read.format('tfrecords').option('recordType', 'Example').load(path=s3_output_test_data)
     restored_test_df.show()
 
+class Training():
+
+    def __init__(self,filename):
+        self.reviews = read_csv(filename,parse_dates=True,squeeze=True)
+        self.text = self.reviews['text']
+
+    def unzip_file(self, filename):
+        with zipfile.ZipFile(filename,"r") as zip_ref:
+            zip_ref.extractall()
+            download_file_command = "rm " + filename
+            os.system(download_file_command)
+
+    def get_bert(self):
+        # Download BERT weights
+        directory = 'uncased_L-24_H-1024_A-16'
+        filename = directory + '.zip'
+        if(not os.path.exists(directory)):
+            print("[debug] Downloading BERT weights and config file......")
+            url = "https://storage.googleapis.com/bert_models/2018_10_18/uncased_L-24_H-1024_A-16.zip"
+            wget.download(url)
+            self.unzip_file(filename)
+    
+    def train_bert(self):
+        self.text.to_csv("input.txt", index = False, header = False)
+        os.system("python3 extract_features.py \
+            --input_file=input.txt \
+            --output_file=output.jsonl \
+            --vocab_file=uncased_L-24_H-1024_A-16/vocab.txt \
+            --bert_config_file=uncased_L-24_H-1024_A-16/bert_config.json \
+            --init_checkpoint=uncased_L-24_H-1024_A-16/bert_model.ckpt \
+            --layers=-1,-5 \
+            --max_seq_length=256 \
+            --batch_size=8")
+
+        bert_output = pd.read_json("output.jsonl", lines = True)
+        os.system("rm output.jsonl")
+        os.system("rm input.txt")
 
 def main():
-    spark = SparkSession.builder.appName('AmazonReviewsSparkProcessor').getOrCreate()
+    training = Training('reviews.csv')
+    training.get_bert()
+    training.train_bert()
+    print("Training Complete")
+    # spark = SparkSession.builder.appName('AmazonReviewsSparkProcessor').getOrCreate()
 
-    # Convert command line args into a map of args
-    args_iter = iter(sys.argv[1:])
-    args = dict(zip(args_iter, args_iter))
+    # # Convert command line args into a map of args
+    # args_iter = iter(sys.argv[1:])
+    # args = dict(zip(args_iter, args_iter))
 
-    # Retrieve the args and replace 's3://' with 's3a://' (used by Spark)
-    s3_input_data = args['s3_input_data'].replace('s3://', 's3a://')
-    print(s3_input_data)
+    # # Retrieve the args and replace 's3://' with 's3a://' (used by Spark)
+    # s3_input_data = args['s3_input_data'].replace('s3://', 's3a://')
+    # print(s3_input_data)
 
-    s3_output_train_data = args['s3_output_train_data'].replace('s3://', 's3a://')
-    print(s3_output_train_data)
+    # s3_output_train_data = args['s3_output_train_data'].replace('s3://', 's3a://')
+    # print(s3_output_train_data)
 
-    s3_output_validation_data = args['s3_output_validation_data'].replace('s3://', 's3a://')
-    print(s3_output_validation_data)
+    # s3_output_validation_data = args['s3_output_validation_data'].replace('s3://', 's3a://')
+    # print(s3_output_validation_data)
 
-    s3_output_test_data = args['s3_output_test_data'].replace('s3://', 's3a://')
-    print(s3_output_test_data)
+    # s3_output_test_data = args['s3_output_test_data'].replace('s3://', 's3a://')
+    # print(s3_output_test_data)
 
-    transform(spark, 
-              s3_input_data, 
-              '/opt/ml/processing/output/bert/train', 
-              '/opt/ml/processing/output/bert/validation', 
-              '/opt/ml/processing/output/bert/test',
-        # s3_output_train_data, s3_output_validation_data, s3_output_test_data
-    )
+    # transform(spark, 
+    #           s3_input_data, 
+    #           '/opt/ml/processing/output/bert/train', 
+    #           '/opt/ml/processing/output/bert/validation', 
+    #           '/opt/ml/processing/output/bert/test',
+    #     # s3_output_train_data, s3_output_validation_data, s3_output_test_data
+    # )
 
 
 if __name__ == "__main__":

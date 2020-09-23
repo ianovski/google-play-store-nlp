@@ -55,9 +55,14 @@ class Visualize():
         plt.show()
 
     def get_average_score_per_month(self,df,xplot,yplot):
-        df = df[(df['date'].dt.year >= 2017)] # remove reviews prior to 2017
-        df = df.set_index(xplot)[yplot] # set date as index
-        mean_date = df.resample('M').mean().dropna() # sort by monthly average
+        # Remove reviews prior to 2017
+        df = df[(df['date'].dt.year >= 2017)]
+
+        # Set date as index
+        df = df.set_index(xplot)[yplot] 
+
+        # sort by monthly average
+        mean_date = df.resample('M').mean().dropna() 
         mean_date.plot()
         plt.show()
 
@@ -66,6 +71,9 @@ class Visualize():
         count = reviews[index].str.len()
         plt.hist(count,100,alpha = 0.5)
         plt.xlim(0, 500)
+        plt.title("Word count")
+        plt.xlabel("Number of words")
+        plt.ylabel("Frequency")
         plt.show()
 
     def plot_word_cloud(self,filename,add_stop=None):
@@ -80,6 +88,7 @@ class Visualize():
         stop_words.extend(add_stop)
         cloud = WordCloud(stopwords=stop_words).generate(text)
         plt.imshow(cloud, interpolation='bilinear')
+        plt.title('Word Cloud')
         plt.axis("off")
         plt.show()
     
@@ -103,25 +112,31 @@ class Visualize():
     def plot_mean_ratings(self,filename,labeled_keywords):
         ''' from aws ml workshop '''
         num_categories = len(labeled_keywords)
+
         # Store average star ratings
         average_star_ratings = {}
         for label in labeled_keywords:
             average_star_ratings[label] = self.get_mean_rating_for_keywords(filename,labeled_keywords[label]) 
         df = pd.DataFrame.from_dict(average_star_ratings,orient='index')
+
         # Create plot
         barplot = sns.barplot(y=df.index, x='mean_score', data = df, saturation=1)
         if num_categories < 10:
             sns.set(rc={'figure.figsize':(10.0, 5.0)})
+
         # Set title and x-axis ticks 
         plt.title('Average Rating by Product Category')
         plt.xticks([1, 2, 3, 4, 5], ['1-Star', '2-Star', '3-Star','4-Star','5-Star'])
+
         # Helper code to show actual values afters bars 
         self.show_values_barplot(barplot, 0.1)
         plt.xlabel("Average Rating")
         plt.ylabel("Product Category")
+
         # Export plot if needed
         plt.tight_layout()
         # plt.savefig('avg_ratings_per_category.png', dpi=300)
+
         # Show graphic
         plt.show()
     
@@ -143,6 +158,7 @@ class Visualize():
     def plot_category_count(self,filename,labeled_keywords):
         """ From AWS ml workshop"""
         num_categories = len(labeled_keywords)
+
         # Store average star ratings
         average_star_ratings = {}
         for label in labeled_keywords:
@@ -152,6 +168,7 @@ class Visualize():
 
         if num_categories < 10:
             sns.set(rc={'figure.figsize':(10.0, 5.0)})
+
         # Set title
         plt.title("Number of Ratings per Product Category for Subset of Product Categories")
 
@@ -255,10 +272,10 @@ class Visualize():
         
 vis = Visualize()
 # vis.get_average_score_per_month(series,'date','score')
-
-vis.plot_word_count("reviews.csv","text")
+# vis.plot_word_count("reviews.csv","text")
 # stop_words = ["word1","word2"]
 # vis.plot_word_cloud("key_phrases.json",stop_words)
+
 
 vis.add_keywords('login',["login","sign","signin"])
 vis.add_keywords('security',["alarm","arm","security","arming"])
@@ -267,7 +284,6 @@ vis.add_keywords('automation',["rule","scene","automat"])
 vis.add_keywords('ios',["ios","iphone"])
 vis.add_keywords('android',["android","pixel","samsun","huawei"])
 
-# vis.plot_mean_ratings("reviews.csv",vis.keywords)
-# vis.plot_category_count("reviews.csv",vis.keywords)
-# vis.plot_rating_distribution_per_category("reviews.csv",vis.keywords)
+vis.plot_mean_ratings("reviews.csv",vis.keywords)
+vis.plot_category_count("reviews.csv",vis.keywords)
 vis.plot_rating_distribution_per_category("reviews.csv",vis.keywords)

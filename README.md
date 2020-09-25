@@ -16,7 +16,7 @@ This pipeline was designed to:
 3. Visualize trends across categories [complete]
 4. Input text to fine-tune an ML model (BERT) [complete]
 5. Generate clusters from resulting word-embeddings [wip]
-6. Automatically classify incoming [wip]
+6. Automatically classify incoming reviews [wip]
 
 Features:
 * Apache Spark

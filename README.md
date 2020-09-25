@@ -4,7 +4,7 @@ ML pipeline for analyzing Google Play Store reviews
 ## Introduction
 In the competetive mobile app marketplace, focus on customer experience is critical to maintaining a loyal user-base and driving long-term business strategy.
 
-Customer reviews provide app developers and business leaders with valuable insight into how users perceive their applications. 
+Customer reviews provide app developers and business leaders with valuable insights into how users perceive their applications. 
 
 Due to the unstructured nature of customer reviews, analyzing this data and deriving actionable insights can be challenging. Manually reviewing text data is also not practical or scalabale for large volumes. 
 

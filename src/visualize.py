@@ -271,21 +271,64 @@ class Visualize():
 
         # plt.savefig('proportion_star_per_category.png', dpi=300)
         plt.show()
+    
+    
+	# Title: Visualizing Word Vectors with t-SNE
+	# Author: Delaney, J
+	# Date: 2017
+	# Code version: 3.0
+	# Availability: https://www.kaggle.com/jeffd23/visualizing-word-vectors-with-t-sne
+    def plot_tsne(self, model): 
+        """Plot 2D t-SNE representation of word embeddings"""
+        print("\nPlotting t-SNE...")
+        # labels = []
+        tokens = []
         
+        for i in range(len(model)):
+            tokens.append(model['features'][i][0]['layers'][0]['values'])
+
+        # for word in model.wv.vocab:
+        #     tokens.append(model[word])
+        #     labels.append(word)
+    
+        tsne_model = TSNE(perplexity=40, n_components=2, init='pca', n_iter=2500, random_state=23)
+        new_values = tsne_model.fit_transform(tokens)
+
+        x = []
+        y = []
+        for value in new_values:
+            x.append(value[0])
+            y.append(value[1])
+        
+        plt.figure(figsize=(25, 25)) 
+        for i in range(len(x)):
+            plt.scatter(x[i],y[i])
+            # plt.annotate(labels[i],
+            #         xy=(x[i], y[i]),
+            #         xytext=(5, 2),
+            #         textcoords='offset points',
+            #         ha='right',
+            #         va='bottom')
+        # filename = 'figures/'+plot_name+'.png'
+        # plt.savefig(filename)
+        plt.show()
+
+    def main(self):
+        # self.plot_word_count("reviews.csv", "text")
+        # stop_words = ["Rogers", "Roger", "app", "phone"]
+        # self.plot_word_cloud("key_phrases.json", stop_words)
+        
+        self.add_keywords('login', ["login", "sign", "signin","log","logging"])
+        self.add_keywords('security', ["alarm", "arm", "security", "arming"])
+        self.add_keywords('cameras', ["cam", "video", "record","camera","cameras"])
+        self.add_keywords('automation', ["rule", "scene", "automat"])
+        # self.add_keywords('ios', ["ios", "iphone"])
+        self.add_keywords('android', ["android", "pixel", "samsun", "huawei"])
+        
+        self.plot_mean_ratings("reviews.csv", self.keywords)
+        self.plot_category_count_with_unlabelled()
+        # self.plot_category_count("reviews.csv", self.keywords)
+        # self.plot_rating_distribution_per_category("reviews.csv", self.keywords)
+    
 vis = Visualize()
-# vis.get_average_score_per_month(series,'date','score')
-# vis.plot_word_count("reviews.csv","text")
-# stop_words = ["word1","word2"]
-# vis.plot_word_cloud("key_phrases.json",stop_words)
-
-
-vis.add_keywords('login',["login","sign","signin"])
-vis.add_keywords('security',["alarm","arm","security","arming"])
-vis.add_keywords('cameras',["cam","video","record"])
-vis.add_keywords('automation',["rule","scene","automat"])
-vis.add_keywords('ios',["ios","iphone"])
-vis.add_keywords('android',["android","pixel","samsun","huawei"])
-
-vis.plot_mean_ratings("reviews.csv",vis.keywords)
-vis.plot_category_count("reviews.csv",vis.keywords)
-vis.plot_rating_distribution_per_category("reviews.csv",vis.keywords)
+vis.main()

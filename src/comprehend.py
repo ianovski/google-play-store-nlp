@@ -5,6 +5,7 @@ import pandas as pd
 
 class Comprehend():
     def __init__(self,access_key_id,secret_access_key):
+        """Initialize AWS client"""
         self.client = boto3.client('comprehend',
 		region_name="us-east-2",
 		aws_access_key_id = access_key_id,
@@ -19,6 +20,7 @@ class Comprehend():
         return(response)
     
     def get_all_key_phrases(self, input_file, output_file):
+        """Iterates through multirow csv file and returns dataframe containing key phrases for each input sentnece"""
         key_phrases = pd.DataFrame()
         series = read_csv(input_file,parse_dates=True,squeeze=True)
         col_length = len(series.columns)

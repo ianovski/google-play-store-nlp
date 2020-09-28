@@ -5,6 +5,7 @@ from pandas import read_csv
 import json
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 
 import nltk
 # nltk.download('stopwords') # Uncomment to download stopwords (only use once)
@@ -35,6 +36,7 @@ class Visualize():
         self.keywords = {}
         self.model_flag = False
         self.model = None
+        self.reviews = pd.DataFrame()
 
     def show_values_barplot(self,axs, space):
         def _show_on_plot(ax):

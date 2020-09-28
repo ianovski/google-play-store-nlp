@@ -15,6 +15,7 @@ import zipfile
 import wget
 import pandas as pd
 from pandas import read_csv
+import json
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pip', '--upgrade'])
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'wrapt', '--upgrade', '--ignore-installed'])
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'tensorflow==2.1.0', '--ignore-installed'])
@@ -30,6 +31,8 @@ from pyspark.ml.linalg import DenseVector
 from pyspark.sql.functions import split
 from pyspark.sql.functions import udf, col
 from pyspark.sql.types import *
+
+from visualize import Visualize
 
 if(not os.path.isfile('src/modeling.py')):
     wget.download('https://raw.githubusercontent.com/google-research/bert/master/modeling.py',out='src/modeling.py')
@@ -241,7 +244,7 @@ class Training():
             os.system(download_file_command)
 
     def get_bert(self):
-        # Download BERT weights
+        """Download the 2018 uncased pretrained BERT model"""
         directory = 'uncased_L-24_H-1024_A-16'
         filename = directory + '.zip'
         if(not os.path.exists(directory)):
@@ -251,6 +254,7 @@ class Training():
             self.unzip_file(filename)
     
     def train_bert(self):
+        """Finetune BERT using customer reviews"""
         self.text.to_csv("input.txt", index = False, header = False)
         os.system("python3 extract_features.py \
             --input_file=input.txt \
@@ -263,14 +267,24 @@ class Training():
             --batch_size=8")
 
         bert_output = pd.read_json("output.jsonl", lines = True)
-        os.system("rm output.jsonl")
-        os.system("rm input.txt")
+        return(bert_output)
+    
+    def read_model(self, filepath):
+        model = pd.read_json(filepath, lines = True)
+        return(model)
 
 def main():
     training = Training('reviews.csv')
-    training.get_bert()
-    training.train_bert()
-    print("Training Complete")
+    # training.get_bert()
+    # training.train_bert()
+    # print("Training Complete")
+    model = training.read_model('output.jsonl')
+    # print("[debug] len = {}".format(len(model)))
+    # print(model)
+    
+    vis = Visualize()
+    vis.plot_tsne(model)
+
     # spark = SparkSession.builder.appName('AmazonReviewsSparkProcessor').getOrCreate()
 
     # # Convert command line args into a map of args

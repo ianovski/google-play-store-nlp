@@ -7,10 +7,11 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
+from transform import Transform
+from w2v import W2V
 import nltk
 # nltk.download('stopwords') # Uncomment to download stopwords (only use once)
 from nltk.corpus import stopwords
-import gensim
 
 class Visualize():
     sns.set_style = 'seaborn-whitegrid'
@@ -34,12 +35,9 @@ class Visualize():
 
     def __init__(self):
         self.keywords = {}
-        self.model_flag = False
-        self.model = None
         self.reviews_labelled = pd.DataFrame()
         self.reviews = pd.DataFrame()
         
-
     def show_values_barplot(self,axs, space):
         def _show_on_plot(ax):
             for p in ax.patches:
@@ -116,24 +114,9 @@ class Visualize():
     def save_reviews_labelled(self,filename):
         self.get_reviews_labelled().to_csv(filename,index=False)
 
-    def build_dict_from_df(self):
-        return None
-
-    def get_mean_rating_for_keywords(self):
-        df = self.get_reviews_labelled()[['category', 'score']]
-        category_means = df.groupby('category').mean()
-        return category_means
-    
-    def get_category_counts(self):
-        df = self.get_reviews_labelled()
-        df = df['category']
-        category_counts = df.value_counts().to_frame()
-        category_counts.reset_index(level=0, inplace=True)
-        category_counts.columns = ['category','counts']
-        return category_counts
-
     def plot_category_count_with_unlabelled(self):
-        df = self.get_category_counts()
+        tm = Transform()
+        df = tm.get_category_counts(self.get_reviews_labelled())
         df.plot(kind='bar',
                                     figsize=(14,8),
                                     title="Customer review category count")
@@ -141,26 +124,22 @@ class Visualize():
         plt.ylabel("Frequency")
         plt.show()
 
-    def classify_review_using_keywords(self, text, labeled_keywords):
-        for label in labeled_keywords:
-            if any(keyword.lower() in text.lower() for keyword in labeled_keywords[label]["keywords"]):
-                return(label)
-        return("other")
-
-
-    def plot_mean_ratings(self,labeled_keywords):
+    def plot_mean_ratings(self, labeled_keywords):
+        tm = Transform()
         num_categories = len(labeled_keywords)
         reviews = self.get_reviews()
 
         reviews_labelled = reviews
         
         # Label reviews with categories
-        reviews_labelled['category'] = reviews.apply(lambda row: self.classify_review_using_keywords(row['text'], labeled_keywords),axis=1)
+        reviews_labelled['category'] = reviews.apply(lambda row: tm.classify_review_using_keywords(row['text'], labeled_keywords),axis=1)
+        
         self.set_reviews_labelled(reviews_labelled)
-       
+
         self.save_reviews_labelled('labelled_reviews.csv')
-        mean_ratings = self.get_mean_rating_for_keywords()
-        count_ratings = self.get_category_counts()
+
+        mean_ratings = tm.get_mean_rating_for_keywords(reviews_labelled)
+        count_ratings = tm.get_category_counts(reviews_labelled)
 
         # Create plot
         barplot = sns.barplot(y=mean_ratings.index, x='score', data = mean_ratings, saturation=1)
@@ -182,29 +161,21 @@ class Visualize():
 
         # Show graphic
         plt.show()
-    
-    # Get similar keywords with w2v
-    def get_similar_words(self,word):
-        # Import model if not already imported
-        if(not self.model_flag):
-            self.model = gensim.models.KeyedVectors.load_word2vec_format('resources/model/GoogleNews-vectors-negative300.bin', binary=True)
-            self.model_flag = True
-        similar_words = self.model.wv.most_similar(word)
-        similar_words = [a_tuple[0] for a_tuple in similar_words]
-        return(similar_words)
 
     def add_keywords(self, category, keywords):
-        # similar_words = self.get_similar_words(category)
+        # w2v = W2V()
+        # similar_words = w2v.get_similar_words(category)
         # keywords = keywords + similar_words
         self.keywords[category] = {"keywords":keywords}
 
     def plot_category_count(self,labeled_keywords):
-        """ From AWS ml workshop"""
+        """ Partially from AWS ml workshop"""
+        tm = Transform()
         num_categories = len(labeled_keywords)
         # Store average star ratings
         average_star_ratings = {}
 
-        df = self.get_category_counts()
+        df = tm.get_category_counts(self.get_reviews_labelled())
         
         barplot = sns.barplot(y='category', x='counts', data = df, saturation=1)
 
@@ -229,39 +200,15 @@ class Visualize():
         # Show the barplot
         plt.show()
     
-    def sum_ratings_per_cetegory(self,labeled_keywords):
-        # Create empty dictionary
-        ratings_per_category = {'1star':0,
-                '2star':0,
-                '3star':0,
-                '4star':0,
-                '5star':0}
-        
-        # Read csv file
-        reviews = self.get_reviews()
-
-        # Populate dictionary with user ratings
-        for idx, review in reviews.iterrows():
-            if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
-                if(review['score']==1):
-                    ratings_per_category['1star'] +=1
-                elif(review['score']==2):
-                    ratings_per_category['2star'] +=1
-                elif(review['score']==3):
-                    ratings_per_category['3star'] +=1
-                elif(review['score']==4):
-                    ratings_per_category['4star'] +=1
-                elif(review['score']==5):
-                    ratings_per_category['5star'] +=1
-        return(ratings_per_category)
 
     def plot_rating_distribution_per_category(self,labeled_keywords):
         """Partially from AWS ML workshop"""
+        tm = Transform()
         ratings_per_category = {}
 
         # Populate dictionary for each categories' user ratings
         for label in labeled_keywords:
-            ratings_per_category[label] = self.sum_ratings_per_cetegory(labeled_keywords[label])
+            ratings_per_category[label] = tm.sum_ratings_per_cetegory(self.get_reviews(), labeled_keywords[label])
 
         df = pd.DataFrame.from_dict(ratings_per_category,orient='index')
         categories = ratings_per_category.keys()

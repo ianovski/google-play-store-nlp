@@ -116,54 +116,54 @@ class Visualize():
     def save_reviews_labelled(self,filename):
         self.get_reviews_labelled().to_csv(filename,index=False)
 
-    def get_mean_rating_for_keywords(self,reviews,labeled_keywords,label):
-        total_score, total_reviews = 0, 0
-        print("[debug] labeled_keywords = {}".format(labeled_keywords))
-        for idx, review in reviews.iterrows():
-            if any(keyword.lower() in review['text'].lower() for keyword in labeled_keywords['keywords']):
-                total_score += review['score']
-                total_reviews += 1
-                review['category'] = label
-                self.set_reviews_labelled(self.get_reviews_labelled().append(review))
-            else:
-                review['category'] = "unlabelled"
-                self.set_reviews_labelled(self.get_reviews_labelled().append(review))
-        
-        try:
-            mean_score = total_score/total_reviews
-        except ZeroDivisionError:
-            mean_score = 0
-        final = {
-            'total_reviews':total_reviews,
-            'mean_score':mean_score,
-        }
-       
-        return(final)
+    def build_dict_from_df(self):
+        return None
+
+    def get_mean_rating_for_keywords(self):
+        df = self.get_reviews_labelled()[['category', 'score']]
+        category_means = df.groupby('category').mean()
+        return category_means
+    
+    def get_category_counts(self):
+        df = self.get_reviews_labelled()
+        df = df['category']
+        category_counts = df.value_counts().to_frame()
+        category_counts.reset_index(level=0, inplace=True)
+        category_counts.columns = ['category','counts']
+        return category_counts
 
     def plot_category_count_with_unlabelled(self):
-        ax = self.get_reviews_labelled()['category'].value_counts()
-        # ax = self.reviews['category'].value_counts()
-        print("[debug] category counts = {}".format(ax))
-        ax.plot(kind='bar',
+        df = self.get_category_counts()
+        df.plot(kind='bar',
                                     figsize=(14,8),
                                     title="Customer review category count")
         plt.xlabel("Review category")
         plt.ylabel("Frequency")
         plt.show()
 
-    def plot_mean_ratings(self,filename,labeled_keywords):
+    def classify_review_using_keywords(self, text, labeled_keywords):
+        for label in labeled_keywords:
+            if any(keyword.lower() in text.lower() for keyword in labeled_keywords[label]["keywords"]):
+                return(label)
+        return("other")
+
+
+    def plot_mean_ratings(self,labeled_keywords):
         num_categories = len(labeled_keywords)
         reviews = self.get_reviews()
-        # Store average star ratings
-        average_star_ratings = {}
-        for label in labeled_keywords:
-            average_star_ratings[label] = self.get_mean_rating_for_keywords(reviews,labeled_keywords[label],label) 
-        df = pd.DataFrame.from_dict(average_star_ratings, orient='index')
 
+        reviews_labelled = reviews
+        
+        # Label reviews with categories
+        reviews_labelled['category'] = reviews.apply(lambda row: self.classify_review_using_keywords(row['text'], labeled_keywords),axis=1)
+        self.set_reviews_labelled(reviews_labelled)
+       
         self.save_reviews_labelled('labelled_reviews.csv')
+        mean_ratings = self.get_mean_rating_for_keywords()
+        count_ratings = self.get_category_counts()
 
         # Create plot
-        barplot = sns.barplot(y=df.index, x='mean_score', data = df, saturation=1)
+        barplot = sns.barplot(y=mean_ratings.index, x='score', data = mean_ratings, saturation=1)
         if num_categories < 10:
             sns.set(rc={'figure.figsize':(10.0, 5.0)})
 
@@ -194,22 +194,19 @@ class Visualize():
         return(similar_words)
 
     def add_keywords(self, category, keywords):
-        print("Adding keywords: {}".format(keywords))
         # similar_words = self.get_similar_words(category)
         # keywords = keywords + similar_words
         self.keywords[category] = {"keywords":keywords}
 
-    def plot_category_count(self,filename,labeled_keywords):
+    def plot_category_count(self,labeled_keywords):
         """ From AWS ml workshop"""
         num_categories = len(labeled_keywords)
-
-        print("[debug] labeled keywords = {}".format(labeled_keywords))
         # Store average star ratings
         average_star_ratings = {}
-        for label in labeled_keywords:
-            average_star_ratings[label] = self.get_mean_rating_for_keywords(self.get_reviews(),labeled_keywords[label],label) 
-        df = pd.DataFrame.from_dict(average_star_ratings,orient='index')
-        barplot = sns.barplot(y=df.index, x='total_reviews', data = df, saturation=1)
+
+        df = self.get_category_counts()
+        
+        barplot = sns.barplot(y='category', x='counts', data = df, saturation=1)
 
         if num_categories < 10:
             sns.set(rc={'figure.figsize':(10.0, 5.0)})
@@ -364,14 +361,15 @@ class Visualize():
 
         self.add_keywords('login', ["login", "sign", "signin","log","logging"])
         self.add_keywords('security', ["alarm", "arm", "security", "arming"])
-        self.add_keywords('cameras', ["cam", "video", "record","camera","cameras"])
-        self.add_keywords('automation', ["rule", "scene", "automat"])
+        self.add_keywords('cameras', ["cam", "video", "record","camera","cameras",'cctv'])
+        self.add_keywords('automation', ["rule", "scene", "automat",'lights','lock'])
+        self.add_keywords('network', ["network","wifi",'internet','connected'])
         # self.add_keywords('ios', ["ios", "iphone"])
-        self.add_keywords('android', ["android", "pixel", "samsun", "huawei"])
+        self.add_keywords('android', ["android", "pixel", "samsun", "huawei",' lg '])
         
-        self.plot_mean_ratings("reviews.csv", self.keywords)
+        self.plot_mean_ratings(self.keywords)
         self.plot_category_count_with_unlabelled()
-        self.plot_category_count("reviews.csv", self.keywords)
+        self.plot_category_count(self.keywords)
         self.plot_rating_distribution_per_category(self.keywords)
     
 vis = Visualize()

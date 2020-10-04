@@ -1,6 +1,6 @@
 import gensim
-class W2V():
 
+class W2V():
     def __init__(self):
         self.model_flag = False
         self.model = None

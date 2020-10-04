@@ -38,4 +38,4 @@ class Transform():
         category_counts = df.value_counts().to_frame()
         category_counts.reset_index(level=0, inplace=True)
         category_counts.columns = ['category','counts']
-        return category_counts
+        return category_counts        

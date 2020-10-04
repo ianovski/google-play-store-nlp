@@ -16,6 +16,8 @@ import wget
 import pandas as pd
 from pandas import read_csv
 import json
+import re
+import io
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pip', '--upgrade'])
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'wrapt', '--upgrade', '--ignore-installed'])
 #subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'tensorflow==2.1.0', '--ignore-installed'])
@@ -31,6 +33,9 @@ from pyspark.ml.linalg import DenseVector
 from pyspark.sql.functions import split
 from pyspark.sql.functions import udf, col
 from pyspark.sql.types import *
+from pyspark.context import SparkContext
+from pyspark import SparkConf
+
 
 from visualize import Visualize
 
@@ -52,6 +57,8 @@ MAX_SEQ_LENGTH = 64
 DATA_COLUMN = 'review_body'
 LABEL_COLUMN = 'star_rating'
 LABEL_VALUES = [1, 2, 3, 4, 5]
+
+COL_NUM = 5 # Number of columns in review csv
 
 label_map = {}
 for (i, label) in enumerate(LABEL_VALUES):
@@ -233,9 +240,20 @@ def transform(spark, s3_input_data, s3_output_train_data, s3_output_validation_d
 
 class Training():
 
-    def __init__(self,filename):
-        self.reviews = read_csv(filename,parse_dates=True,squeeze=True)
-        self.text = self.reviews['text']
+    def __init__(self, filename):
+        self.filename = filename
+        self.sc = SparkContext("local","first app")
+        self.spark = SparkSession(self.sc)
+        self.reviews = None
+
+    def read_reviews_csv(self):
+        self.reviews = self.remove_new_lines(self.filename).toDF().select('_5')
+
+    def remove_new_lines(self, filename):
+        rdd = self.sc.wholeTextFiles(filename)\
+            .map(lambda x: re.sub(r'(?!(([^"]*"){2})*[^"]*$),', ' ', x[1].replace("\r\n", ",").replace(",,", ",")).split(","))\
+            .flatMap(lambda x: [x[k:k + COL_NUM] for k in range(0, len(x), COL_NUM)])
+        return rdd 
 
     def unzip_file(self, filename):
         with zipfile.ZipFile(filename,"r") as zip_ref:
@@ -255,35 +273,50 @@ class Training():
     
     def train_bert(self):
         """Finetune BERT using customer reviews"""
-        self.text.to_csv("input.txt", index = False, header = False)
-        os.system("python3 extract_features.py \
+        print("[debug] self.reviews = {}".format(self.reviews))
+        df = self.reviews.toPandas()
+        print("[debug] df = {}".format(df))
+        df.to_csv("input.txt", index=False, header=False)
+        out = os.system("python3 extract_features.py \
             --input_file=input.txt \
-            --output_file=output.jsonl \
+            --output_file=output.json \
             --vocab_file=uncased_L-24_H-1024_A-16/vocab.txt \
             --bert_config_file=uncased_L-24_H-1024_A-16/bert_config.json \
             --init_checkpoint=uncased_L-24_H-1024_A-16/bert_model.ckpt \
             --layers=-1,-5 \
             --max_seq_length=256 \
             --batch_size=8")
-
-        bert_output = pd.read_json("output.jsonl", lines = True)
+        bert_output = pd.read_json("output.json", lines = True)
         return(bert_output)
     
+    def remove_new_line_chars(self):
+        print("[debug] reviews.shape = {}".format(self.reviews.shape))
+        self.reviews = self.reviews.replace('\n', '', regex=True)
+
     def read_model(self, filepath):
         model = pd.read_json(filepath, lines = True)
-        return(model)
+        return (model)
+        
+    def extract_labels(self,vis,filename):
+        vis = Visualize()
+        vis.read_reviews_labelled_csv(filename)
+        labels = vis.get_reviews_labelled()['category']
+        return labels
 
 def main():
     training = Training('reviews.csv')
+    # training.read_reviews_csv()
     # training.get_bert()
-    # training.train_bert()
-    # print("Training Complete")
-    model = training.read_model('output.jsonl')
+    # model = training.train_bert()
+    print("Training Complete")
+
+    model = training.read_model('output.json')
     # print("[debug] len = {}".format(len(model)))
     # print(model)
     
     vis = Visualize()
-    vis.plot_tsne(model)
+    labels = training.extract_labels(vis, 'labelled_reviews.csv')
+    vis.plot_tsne(model,labels)
 
     # spark = SparkSession.builder.appName('AmazonReviewsSparkProcessor').getOrCreate()
 

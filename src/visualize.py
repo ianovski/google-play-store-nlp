@@ -112,7 +112,11 @@ class Visualize():
         return self.reviews_labelled
 
     def save_reviews_labelled(self,filename):
-        self.get_reviews_labelled().to_csv(filename,index=False)
+        self.get_reviews_labelled().to_csv(filename, index=False)
+    
+    def read_reviews_labelled_csv(self, filename):
+        reviews = read_csv(filename, parse_dates=True, squeeze=True)
+        self.set_reviews_labelled(reviews)
 
     def plot_category_count_with_unlabelled(self):
         tm = Transform()
@@ -124,16 +128,17 @@ class Visualize():
         plt.ylabel("Frequency")
         plt.show()
 
-    def plot_mean_ratings(self, labeled_keywords):
-        tm = Transform()
-        num_categories = len(labeled_keywords)
-        reviews = self.get_reviews()
-
+    def label_reviews(self, tm, reviews, labelled_keywords):
         reviews_labelled = reviews
-        
+        reviews_labelled['category'] = reviews.apply(lambda row: tm.classify_review_using_keywords(row['text'], labelled_keywords),axis=1)
+        return reviews_labelled
+
+    def plot_mean_ratings(self, labelled_keywords):
+        tm = Transform()
+        num_categories = len(labelled_keywords)
+
         # Label reviews with categories
-        reviews_labelled['category'] = reviews.apply(lambda row: tm.classify_review_using_keywords(row['text'], labeled_keywords),axis=1)
-        
+        reviews_labelled = self.label_reviews(tm, self.get_reviews(), labelled_keywords)
         self.set_reviews_labelled(reviews_labelled)
 
         self.save_reviews_labelled('labelled_reviews.csv')
@@ -186,8 +191,9 @@ class Visualize():
         plt.title("Number of Ratings per Product Category for Subset of Product Categories")
 
         # Set x-axis ticks to match scale 
-        plt.xticks([100, 200, 300, 400], ['100', '200', '300', '400'])
-        plt.xlim(0, 420)
+        xrange = list(range(100,700,100)) # need to generalize this
+        plt.xticks(xrange, map(str,xrange))
+        plt.xlim(0, 720)
 
         plt.xlabel("Number of Ratings")
         plt.ylabel("Product Category")
@@ -265,7 +271,7 @@ class Visualize():
 	# Date: 2017
 	# Code version: 3.0
 	# Availability: https://www.kaggle.com/jeffd23/visualizing-word-vectors-with-t-sne
-    def plot_tsne(self, model): 
+    def plot_tsne(self, model,labels): 
         """Plot 2D t-SNE representation of word embeddings"""
         print("\nPlotting t-SNE...")
         # labels = []
@@ -288,36 +294,38 @@ class Visualize():
             y.append(value[1])
         
         plt.figure(figsize=(25, 25)) 
-        for i in range(len(x)):
-            plt.scatter(x[i],y[i])
-            # plt.annotate(labels[i],
-            #         xy=(x[i], y[i]),
-            #         xytext=(5, 2),
-            #         textcoords='offset points',
-            #         ha='right',
-            #         va='bottom')
+        for i in range(len(x)-1):
+            print("[debug] i = {}".format(i))
+            print("[debug] i+1 = {}".format(i+1))
+            plt.scatter(x[i+1], y[i+1])
+            plt.annotate(labels[i],
+                    xy=(x[i+1], y[i+1]),
+                    xytext=(5, 2),
+                    textcoords='offset points',
+                    ha='right',
+                    va='bottom')
         # filename = 'figures/'+plot_name+'.png'
         # plt.savefig(filename)
         plt.show()
 
-    def main(self):
-        self.read_reviews_csv("reviews.csv")
-        # self.plot_word_count("text")
-        # stop_words = ["Rogers", "Roger", "app", "phone"]
-        # self.plot_word_cloud("key_phrases.json", stop_words)
+def main():
+    vis = Visualize()
+    vis.read_reviews_csv("reviews.csv")
+    # vis.plot_word_count("text")
+    # stop_words = ["Rogers", "Roger", "app", "phone"]
+    # vis.plot_word_cloud("key_phrases.json", stop_words)
 
-        self.add_keywords('login', ["login", "sign", "signin","log","logging"])
-        self.add_keywords('security', ["alarm", "arm", "security", "arming"])
-        self.add_keywords('cameras', ["cam", "video", "record","camera","cameras",'cctv'])
-        self.add_keywords('automation', ["rule", "scene", "automat",'lights','lock'])
-        self.add_keywords('network', ["network","wifi",'internet','connected'])
-        # self.add_keywords('ios', ["ios", "iphone"])
-        self.add_keywords('android', ["android", "pixel", "samsun", "huawei",' lg '])
-        
-        self.plot_mean_ratings(self.keywords)
-        self.plot_category_count_with_unlabelled()
-        self.plot_category_count(self.keywords)
-        self.plot_rating_distribution_per_category(self.keywords)
-    
-vis = Visualize()
-vis.main()
+    vis.add_keywords('login', ["login", "sign", "signin","log","logging"])
+    vis.add_keywords('security', ["alarm", "arm", "security", "arming"])
+    vis.add_keywords('cameras', ["cam", "video", "record","camera","cameras",'cctv'])
+    vis.add_keywords('automation', ["rule", "scene", "automat",'lights','lock'])
+    vis.add_keywords('network', ["network","wifi",'internet','connected'])
+    # vis.add_keywords('ios', ["ios", "iphone"])
+    vis.add_keywords('android', ["android", "pixel", "samsun", "huawei",' lg '])
+      
+    vis.plot_mean_ratings(vis.keywords)
+    vis.plot_category_count(vis.keywords)
+    vis.plot_rating_distribution_per_category(vis.keywords)
+
+# if __name__ == "__main__":
+#     main()

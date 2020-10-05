@@ -295,8 +295,6 @@ class Visualize():
         
         plt.figure(figsize=(25, 25)) 
         for i in range(len(x)-1):
-            print("[debug] i = {}".format(i))
-            print("[debug] i+1 = {}".format(i+1))
             plt.scatter(x[i+1], y[i+1])
             plt.annotate(labels[i],
                     xy=(x[i+1], y[i+1]),

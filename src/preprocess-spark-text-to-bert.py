@@ -18,15 +18,17 @@ from pandas import read_csv
 import json
 import re
 import io
-#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pip', '--upgrade'])
-#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'wrapt', '--upgrade', '--ignore-installed'])
-#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'tensorflow==2.1.0', '--ignore-installed'])
+# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pip', '--upgrade'])
+# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'wrapt', '--upgrade', '--ignore-installed'])
+# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'tensorflow==1.11.0', '--ignore-installed'])
 import tensorflow as tf
-#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'transformers==2.8.0'])
+# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'transformers==2.8.0'])
 from transformers import DistilBertTokenizer
 
 import pyspark
 from pyspark.sql import SparkSession
+from pyspark.sql import DataFrameWriter
+from pyspark.sql import *
 from pyspark.ml import Pipeline
 from pyspark.sql.functions import *
 from pyspark.ml.linalg import DenseVector
@@ -56,8 +58,7 @@ tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 MAX_SEQ_LENGTH = 64
 DATA_COLUMN = 'review_body'
 LABEL_COLUMN = 'star_rating'
-LABEL_VALUES = [1, 2, 3, 4, 5]
-
+LABEL_VALUES = ['login','security','cameras','automation','network','android','other']
 COL_NUM = 5 # Number of columns in review csv
 
 label_map = {}
@@ -164,87 +165,19 @@ def parse_args():
     )
     return parser.parse_args()
 
-
-def transform(spark, s3_input_data, s3_output_train_data, s3_output_validation_data, s3_output_test_data): 
-    print('Processing {} => {}'.format(s3_input_data, s3_output_train_data, s3_output_validation_data, s3_output_test_data))
- 
-    schema = StructType([
-        StructField('marketplace', StringType(), True),
-        StructField('customer_id', StringType(), True),
-        StructField('review_id', StringType(), True),
-        StructField('product_id', StringType(), True),
-        StructField('product_parent', StringType(), True),
-        StructField('product_title', StringType(), True),
-        StructField('product_category', StringType(), True),
-        StructField('star_rating', IntegerType(), True),
-        StructField('helpful_votes', IntegerType(), True),
-        StructField('total_votes', IntegerType(), True),
-        StructField('vine', StringType(), True),
-        StructField('verified_purchase', StringType(), True),
-        StructField('review_headline', StringType(), True),
-        StructField('review_body', StringType(), True),
-        StructField('review_date', StringType(), True)
-    ])
-    
-    df_csv = spark.read.csv(path=s3_input_data,
-                            sep='\t',
-                            schema=schema,
-                            header=True,
-                            quote=None)
-    df_csv.show()
-
-    # This dataset should already be clean, but always good to double-check
-    print('Showing null review_body rows...')
-    df_csv.where(col('review_body').isNull()).show()
-
-    print('Showing cleaned csv')
-    df_csv_dropped = df_csv.na.drop(subset=['review_body'])
-    df_csv_dropped.show()
-
-    # TODO:  Balance
-    
-    features_df = df_csv_dropped.select(['star_rating', 'review_body'])
-    features_df.show()
-
-    tfrecord_schema = StructType([
-      StructField("input_ids", ArrayType(IntegerType(), False)),
-      StructField("input_mask", ArrayType(IntegerType(), False)),
-      StructField("segment_ids", ArrayType(IntegerType(), False)),
-      StructField("label_ids", ArrayType(IntegerType(), False))
-    ])
-
-    bert_transformer = udf(lambda text, label: convert_input(text, label), tfrecord_schema)
-
-    spark.udf.register('bert_transformer', bert_transformer)
-
-    transformed_df = features_df.select(bert_transformer('star_rating', 'review_body').alias('tfrecords'))
-    transformed_df.show(truncate=False)
-
-    flattened_df = transformed_df.select('tfrecords.*')
-    flattened_df.show()
-
-    # Split 90-5-5%
-    train_df, validation_df, test_df = flattened_df.randomSplit([0.9, 0.05, 0.05])
-
-    train_df.write.format('tfrecords').option('recordType', 'Example').save(path=s3_output_train_data)
-    print('Wrote to output file:  {}'.format(s3_output_train_data))
-    
-    validation_df.write.format('tfrecords').option('recordType', 'Example').save(path=s3_output_validation_data)
-    print('Wrote to output file:  {}'.format(s3_output_validation_data))
-
-    test_df.write.format('tfrecords').option('recordType', 'Example').save(path=s3_output_test_data)    
-    print('Wrote to output file:  {}'.format(s3_output_test_data))
-
-    restored_test_df = spark.read.format('tfrecords').option('recordType', 'Example').load(path=s3_output_test_data)
-    restored_test_df.show()
-
 class Training():
 
     def __init__(self, filename):
         self.filename = filename
-        self.sc = SparkContext("local","first app")
-        self.spark = SparkSession(self.sc)
+        self.sc = SparkContext("local", "first app")
+        jar_paths = ["/home/alex/.m2/repository/org/tensorflow/tensorflow-hadoop/1.11.0/tensorflow-hadoop-1.11.0.jar",
+                    "/home/alex/.m2/repository/org/tensorflow/spark-tensorflow-connector_2.12/1.11.0/spark-tensorflow-connector_2.12-1.11.0.jar"]
+        self.spark = SparkSession.builder\
+            .config('spark.jars',jar_paths)\
+            .appName('GoogleReviewsSparkProcessor')\
+            .getOrCreate()
         self.reviews = None
+
 
     def read_reviews_csv(self):
         self.reviews = self.remove_new_lines(self.filename).toDF().select('_5')
@@ -273,9 +206,7 @@ class Training():
     
     def train_bert(self):
         """Finetune BERT using customer reviews"""
-        print("[debug] self.reviews = {}".format(self.reviews))
         df = self.reviews.toPandas()
-        print("[debug] df = {}".format(df))
         df.to_csv("input.txt", index=False, header=False)
         out = os.system("python3 extract_features.py \
             --input_file=input.txt \
@@ -303,15 +234,79 @@ class Training():
         labels = vis.get_reviews_labelled()['category']
         return labels
 
+    # def transform(self, s3_input_data, s3_output_train_data, s3_output_validation_data, s3_output_test_data): 
+    def transform(self,output_train_data,output_validation_data,output_test_data):
+        
+        # Define Spark DF schema
+        schema = StructType([
+            StructField('userName', StringType(), True),
+            StructField('date', StringType(), True),
+            StructField('score', IntegerType(), True),
+            StructField('scoreText', IntegerType(), True),
+            StructField('text', StringType(), True),
+            StructField('category', StringType(), True)
+        ])
+
+        # Import as pandas dataframe to maintain schema
+        pdDF = pd.read_csv(self.filename)
+
+        # Convert to Spark dataframe
+        df_csv = self.spark.createDataFrame(pdDF,schema = schema)
+        # df_csv = self.remove_new_lines(self.filename).toDF()
+
+        # # This dataset should already be clean, but always good to double-check
+        # print('Showing null review_body rows...')
+        # df_csv.where(col('review_body').isNull()).show()
+
+        # print('Showing cleaned csv')
+        # df_csv_dropped = df_csv.na.drop(subset=['review_body'])
+        # df_csv_dropped.show()
+
+        # # TODO:  Balance
+        features_df = df_csv.select(['category', 'text'])
+
+        tfrecord_schema = StructType([
+        StructField("input_ids", ArrayType(IntegerType(), False)),
+        StructField("input_mask", ArrayType(IntegerType(), False)),
+        StructField("segment_ids", ArrayType(IntegerType(), False)),
+        StructField("label_ids", ArrayType(IntegerType(), False))
+        ])
+
+        bert_transformer = udf(lambda text, label: convert_input(text, label), tfrecord_schema)
+
+        self.spark.udf.register('bert_transformer', bert_transformer)
+
+        transformed_df = features_df.select(bert_transformer('category', 'text').alias('tfrecords'))
+        transformed_df.show(truncate=False)
+
+        flattened_df = transformed_df.select('tfrecords.*')
+        flattened_df.show()
+
+        # # Split 90-5-5%
+        train_df, validation_df, test_df = flattened_df.randomSplit([0.9, 0.05, 0.05])
+        
+        train_df.write.format('json').save(path=output_train_data)
+        print('Wrote to output file:  {}'.format(output_train_data))
+    
+        validation_df.write.format('json').save(path=output_validation_data)
+        print('Wrote to output file:  {}'.format(output_validation_data))
+
+        test_df.write.format('json').save(path=output_test_data)    
+        print('Wrote to output file:  {}'.format(output_test_data))
+
+        restored_test_df = self.spark.read.format('json').load(path=output_test_data)
+        restored_test_df.show()
+
 def main():
-    training = Training('reviews.csv')
+    training = Training('labelled_reviews_small.csv')
+    training.transform('output_train_data.json','output_validation_data.json','output_test_data.json')
+    exit()
     # training.read_reviews_csv()
     # training.get_bert()
     # model = training.train_bert()
     print("Training Complete")
 
     model = training.read_model('output.json')
-    # print("[debug] len = {}".format(len(model)))
     # print(model)
     
     vis = Visualize()

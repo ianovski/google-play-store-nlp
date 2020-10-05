@@ -178,7 +178,6 @@ class Training():
             .getOrCreate()
         self.reviews = None
 
-
     def read_reviews_csv(self):
         self.reviews = self.remove_new_lines(self.filename).toDF().select('_5')
 
@@ -285,27 +284,27 @@ class Training():
         # # Split 90-5-5%
         train_df, validation_df, test_df = flattened_df.randomSplit([0.9, 0.05, 0.05])
         
-        train_df.write.format('json').save(path=output_train_data)
+        # Note: Need to install spark-tensorflow-connector to save as tfrecords format
+        train_df.write.format('tfrecords').save(path=output_train_data)
         print('Wrote to output file:  {}'.format(output_train_data))
     
-        validation_df.write.format('json').save(path=output_validation_data)
+        validation_df.write.format('tfrecords').save(path=output_validation_data)
         print('Wrote to output file:  {}'.format(output_validation_data))
 
-        test_df.write.format('json').save(path=output_test_data)    
+        test_df.write.format('tfrecords').save(path=output_test_data)    
         print('Wrote to output file:  {}'.format(output_test_data))
 
-        restored_test_df = self.spark.read.format('json').load(path=output_test_data)
+        restored_test_df = self.spark.read.format('tfrecords').load(path=output_test_data)
         restored_test_df.show()
 
 def main():
-    training = Training('labelled_reviews_small.csv')
-    training.transform('output_train_data.json','output_validation_data.json','output_test_data.json')
-    exit()
+    training = Training('labelled_reviews.csv')
+    training.transform('output_train_data.tfrecord','output_validation_data.tfrecord','output_test_data.tfrecord')
+    # exit()
     # training.read_reviews_csv()
     # training.get_bert()
     # model = training.train_bert()
     print("Training Complete")
-
     model = training.read_model('output.json')
     # print(model)
     

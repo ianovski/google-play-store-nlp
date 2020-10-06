@@ -55,7 +55,7 @@ import tokenization
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 
 # We set sequences to be at most 128 tokens long.
-MAX_SEQ_LENGTH = 64
+MAX_SEQ_LENGTH = 128
 DATA_COLUMN = 'review_body'
 LABEL_COLUMN = 'star_rating'
 LABEL_VALUES = ['login','security','cameras','automation','network','android','other']
@@ -165,67 +165,15 @@ def parse_args():
     )
     return parser.parse_args()
 
-class Training():
+class PreProcessing():
 
     def __init__(self, filename):
         self.filename = filename
         self.sc = SparkContext("local", "first app")
-        jar_paths = ["/home/alex/.m2/repository/org/tensorflow/tensorflow-hadoop/1.11.0/tensorflow-hadoop-1.11.0.jar",
-                    "/home/alex/.m2/repository/org/tensorflow/spark-tensorflow-connector_2.12/1.11.0/spark-tensorflow-connector_2.12-1.11.0.jar"]
         self.spark = SparkSession.builder\
-            .config('spark.jars',jar_paths)\
             .appName('GoogleReviewsSparkProcessor')\
             .getOrCreate()
         self.reviews = None
-
-    def read_reviews_csv(self):
-        self.reviews = self.remove_new_lines(self.filename).toDF().select('_5')
-
-    def remove_new_lines(self, filename):
-        rdd = self.sc.wholeTextFiles(filename)\
-            .map(lambda x: re.sub(r'(?!(([^"]*"){2})*[^"]*$),', ' ', x[1].replace("\r\n", ",").replace(",,", ",")).split(","))\
-            .flatMap(lambda x: [x[k:k + COL_NUM] for k in range(0, len(x), COL_NUM)])
-        return rdd 
-
-    def unzip_file(self, filename):
-        with zipfile.ZipFile(filename,"r") as zip_ref:
-            zip_ref.extractall()
-            download_file_command = "rm " + filename
-            os.system(download_file_command)
-
-    def get_bert(self):
-        """Download the 2018 uncased pretrained BERT model"""
-        directory = 'uncased_L-24_H-1024_A-16'
-        filename = directory + '.zip'
-        if(not os.path.exists(directory)):
-            print("[debug] Downloading BERT weights and config file......")
-            url = "https://storage.googleapis.com/bert_models/2018_10_18/uncased_L-24_H-1024_A-16.zip"
-            wget.download(url)
-            self.unzip_file(filename)
-    
-    def train_bert(self):
-        """Finetune BERT using customer reviews"""
-        df = self.reviews.toPandas()
-        df.to_csv("input.txt", index=False, header=False)
-        out = os.system("python3 extract_features.py \
-            --input_file=input.txt \
-            --output_file=output.json \
-            --vocab_file=uncased_L-24_H-1024_A-16/vocab.txt \
-            --bert_config_file=uncased_L-24_H-1024_A-16/bert_config.json \
-            --init_checkpoint=uncased_L-24_H-1024_A-16/bert_model.ckpt \
-            --layers=-1,-5 \
-            --max_seq_length=256 \
-            --batch_size=8")
-        bert_output = pd.read_json("output.json", lines = True)
-        return(bert_output)
-    
-    def remove_new_line_chars(self):
-        print("[debug] reviews.shape = {}".format(self.reviews.shape))
-        self.reviews = self.reviews.replace('\n', '', regex=True)
-
-    def read_model(self, filepath):
-        model = pd.read_json(filepath, lines = True)
-        return (model)
         
     def extract_labels(self,vis,filename):
         vis = Visualize()
@@ -285,59 +233,34 @@ class Training():
         train_df, validation_df, test_df = flattened_df.randomSplit([0.9, 0.05, 0.05])
         
         # Note: Need to install spark-tensorflow-connector to save as tfrecords format
+        if (os.path.exists(output_train_data) and os.path.isdir(output_train_data)):
+            shutil.rmtree(output_train_data)
         train_df.write.format('tfrecords').save(path=output_train_data)
         print('Wrote to output file:  {}'.format(output_train_data))
     
+        if (os.path.exists(output_validation_data) and os.path.isdir(output_validation_data)):
+            shutil.rmtree(output_validation_data)
         validation_df.write.format('tfrecords').save(path=output_validation_data)
         print('Wrote to output file:  {}'.format(output_validation_data))
 
+        if (os.path.exists(output_test_data) and os.path.isdir(output_test_data)):
+            shutil.rmtree(output_test_data)
         test_df.write.format('tfrecords').save(path=output_test_data)    
         print('Wrote to output file:  {}'.format(output_test_data))
 
         restored_test_df = self.spark.read.format('tfrecords').load(path=output_test_data)
         restored_test_df.show()
 
+
 def main():
-    training = Training('labelled_reviews.csv')
-    training.transform('output_train_data.tfrecord','output_validation_data.tfrecord','output_test_data.tfrecord')
-    # exit()
-    # training.read_reviews_csv()
-    # training.get_bert()
-    # model = training.train_bert()
-    print("Training Complete")
-    model = training.read_model('output.json')
-    # print(model)
+    pre_proc = PreProcessing('labelled_reviews.csv')
+    print("Preprocessing BERT.....")
+    pre_proc.transform('output_train_data.tfrecord','output_validation_data.tfrecord','output_test_data.tfrecord')  
     
-    vis = Visualize()
-    labels = training.extract_labels(vis, 'labelled_reviews.csv')
-    vis.plot_tsne(model,labels)
-
-    # spark = SparkSession.builder.appName('AmazonReviewsSparkProcessor').getOrCreate()
-
-    # # Convert command line args into a map of args
-    # args_iter = iter(sys.argv[1:])
-    # args = dict(zip(args_iter, args_iter))
-
-    # # Retrieve the args and replace 's3://' with 's3a://' (used by Spark)
-    # s3_input_data = args['s3_input_data'].replace('s3://', 's3a://')
-    # print(s3_input_data)
-
-    # s3_output_train_data = args['s3_output_train_data'].replace('s3://', 's3a://')
-    # print(s3_output_train_data)
-
-    # s3_output_validation_data = args['s3_output_validation_data'].replace('s3://', 's3a://')
-    # print(s3_output_validation_data)
-
-    # s3_output_test_data = args['s3_output_test_data'].replace('s3://', 's3a://')
-    # print(s3_output_test_data)
-
-    # transform(spark, 
-    #           s3_input_data, 
-    #           '/opt/ml/processing/output/bert/train', 
-    #           '/opt/ml/processing/output/bert/validation', 
-    #           '/opt/ml/processing/output/bert/test',
-    #     # s3_output_train_data, s3_output_validation_data, s3_output_test_data
-    # )
+    # vis = Visualize()
+    # labels = training.extract_labels(vis, 'labelled_reviews.csv')
+    # print("[debug] train_df = {}".format(model["train_df"]))
+    # vis.plot_tsne(model["train_df"],labels)
 
 
 if __name__ == "__main__":

@@ -263,5 +263,5 @@ def main():
     # vis.plot_tsne(model["train_df"],labels)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

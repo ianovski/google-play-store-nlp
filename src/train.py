@@ -91,7 +91,7 @@ class Train():
             tf.data.experimental.map_and_batch(
                 lambda record: _decode_record(record, name_to_features),
                 # batch_size=8,
-                batch_size=8,
+                batch_size=64,
                 drop_remainder=drop_remainder,
                 num_parallel_calls=tf.data.experimental.AUTOTUNE))
 
@@ -105,7 +105,8 @@ class Train():
 
     def read_training_data(self, filepath):
         train_data = filepath
-        train_data_filenames = glob('{}/*.tfrecord'.format(train_data))
+        train_data_filenames = glob('{}.tfrecord/*'.format(train_data))
+        
         print('train_data_filenames {}'.format(train_data_filenames))
 
         self.train_dataset = self.file_based_input_dataset_builder(
@@ -117,7 +118,7 @@ class Train():
     
     def read_validation_data(self, filepath):
         validation_data = filepath
-        validation_data_filenames = glob('{}/*.tfrecord'.format(validation_data))
+        validation_data_filenames = glob('{}.tfrecord/*'.format(validation_data))
         print('validation_data_filenames {}'.format(validation_data_filenames))
 
         self.validation_dataset = self.file_based_input_dataset_builder(
@@ -129,7 +130,7 @@ class Train():
     
     def read_test_data(self, filepath):
         test_data = filepath
-        test_data_filenames = glob('{}/*.tfrecord'.format(test_data))
+        test_data_filenames = glob('{}.tfrecord/*'.format(test_data))
         print(test_data_filenames)
         self.test_dataset = self.file_based_input_dataset_builder(
             channel='test',
@@ -139,7 +140,7 @@ class Train():
             drop_remainder=False).map(self.select_data_and_label_from_record)
     
     def load_pretrained_bert_model(self):
-        CLASSES = [1, 2, 3, 4, 5, 6]
+        CLASSES = [1, 2, 3, 4, 5, 6,7]
         
         config = DistilBertConfig.from_pretrained('distilbert-base-uncased',
                                           num_labels=len(CLASSES))
@@ -167,7 +168,8 @@ class Train():
                     steps_per_epoch=self.train_steps_per_epoch,
                     validation_data=self.validation_dataset,
                     validation_steps=self.validation_steps,
-                    callbacks=self.callbacks)
+                    callbacks=self.callbacks,
+                    batch_size=1)
 
     def evaluate_model(self):
         test_history = self.model.evaluate(self.test_dataset,
@@ -185,13 +187,13 @@ def main():
     train = Train()
     # with(tf.device("/CPU:0")):
     train.read_training_data('output_train_data')
-    train.read_validation_data('output_validation_data')
+    # train.read_validation_data('output_validation_data')
     train.read_test_data('output_test_data')
 
     train.load_pretrained_bert_model()
     train.setup_custom_classifier_model()
     train.evaluate_model()
-    train.save_model()
+    train.save_model("model")
 
 
 

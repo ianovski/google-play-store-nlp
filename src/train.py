@@ -181,7 +181,7 @@ class Train():
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         filepath = model_dir + filename
-        model.save_pretrained(model_dir)
+        self.model.save_pretrained(model_dir)
     
 def main():
     train = Train()

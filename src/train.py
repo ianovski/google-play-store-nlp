@@ -175,21 +175,20 @@ class Train():
         test_history = self.model.evaluate(self.test_dataset,
                         steps=self.test_steps,                            
                         callbacks=self.callbacks)
+        print(test_history)
         
     def save_model(self, filename):
         model_dir = './tmp/'
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         filepath = model_dir + filename
-        self.model.save_pretrained(model_dir)
+        self.model.save_pretrained(filepath)
     
 def main():
     train = Train()
-    # with(tf.device("/CPU:0")):
     train.read_training_data('output_train_data')
-    # train.read_validation_data('output_validation_data')
+    train.read_validation_data('output_validation_data')
     train.read_test_data('output_test_data')
-
     train.load_pretrained_bert_model()
     train.setup_custom_classifier_model()
     train.evaluate_model()

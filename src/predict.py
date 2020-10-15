@@ -30,7 +30,7 @@ class Predict():
                                                 framework='tf',
                                                 device=-1) # -1 for CPU, >=0 for GPU      
 
-    def map_label_to_category(self,label):
+    def category_map(self,label):
         label_map = {
             "1" : "login",
             "2" : "security",
@@ -44,5 +44,14 @@ class Predict():
     
     def predict_classification(self,text):
         prediction = self.inference_pipeline(text)
-        return self.map_label_to_category(str(prediction[0]["label"]))
+        return self.category_map(str(prediction[0]["label"]))
     
+def main():
+    predict = Predict("./tmp/model")
+    text = "The login does not work"
+    prediction = predict.predict_classification(text)
+    print("text = {} | prediction = {}".format(text,prediction))
+    
+
+# if __name__ == "__main__":
+#     main()

@@ -24,7 +24,7 @@ class Test():
         return list(map(predict.predict_classification,self.reviews["text"].str.split())) 
     
     def evaluate(self, actual, predicted):
-        print("Evaluating....")
+        print("Evaluating model....")
         predicted_series = pd.Series(predicted)
         frame = {"actual" : actual, "predicted": predicted}
         eval = pd.DataFrame(frame)

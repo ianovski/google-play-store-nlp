@@ -12,7 +12,10 @@ from transformers import DistilBertTokenizer
 from transformers import TFDistilBertForSequenceClassification
 from transformers import TextClassificationPipeline
 from transformers.configuration_distilbert import DistilBertConfig
+import wandb
 MAX_SEQ_LENGTH = 128
+
+from wandb.tensorflow import WandbHook
 
 class Train():
     def __init__(self):
@@ -42,7 +45,7 @@ class Train():
         self.validation_dataset = None
         self.test_dataset = None
         self.model = None
-        self.callbacks = []
+        self.callbacks = []        
 
     def select_data_and_label_from_record(self,record):
         x = {
@@ -184,6 +187,28 @@ class Train():
         filepath = model_dir + filename
         self.model.save_pretrained(filepath)
     
+    def init_sweep(self):
+        sweep_config = {
+            "name": "vanilla-sweep-batch-16",
+            "method": "bayes",
+            "metric": {"name": "accuracy", "goal": "maximize"},
+            "parameters": {
+                "num_train_epochs": {"min": 1, "max": 10},
+                "learning_rate": {"min": 0, "max": 4e-4},
+            },
+            "early_terminate": {"type": "hyperband", "min_iter": 60}
+            }
+        hyperparameter_defaults = dict(
+            shuffle=True,
+            epochs=self.epochs,
+            steps_per_epoch=self.train_steps_per_epoch,
+            validation_data=self.validation_dataset,
+            validation_steps=self.validation_steps,
+            callbacks=self.callbacks,
+            batch_size=1
+        )
+        wandb.init(project="bert-opt", sync_tensorboard=True,config=hyperparameter_defaults)
+    
 def main():
     train = Train()
     train.read_training_data('output_train_data')
@@ -193,8 +218,6 @@ def main():
     train.setup_custom_classifier_model()
     train.evaluate_model()
     train.save_model("model")
-
-
 
 if __name__ == "__main__":
     main()

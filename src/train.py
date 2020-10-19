@@ -15,7 +15,8 @@ from transformers.configuration_distilbert import DistilBertConfig
 import wandb
 MAX_SEQ_LENGTH = 128
 
-from wandb.tensorflow import WandbHook
+import optuna
+from functools import partial
 
 class Train():
     def __init__(self):
@@ -209,14 +210,47 @@ class Train():
         )
         wandb.init(project="bert-opt", sync_tensorboard=True,config=hyperparameter_defaults)
     
+    def optimize(self,trial):
+        epochs = trial.suggest_int("epochs",1,3)
+        steps_per_epoch=trial.suggest_int("steps_per_epoch",10,100)
+        validation_steps=trial.suggest_int("validation_steps",10,100)
+
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        metric=tf.keras.metrics.SparseCategoricalAccuracy('accuracy')
+
+        optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate, epsilon=self.epsilon)
+        self.model.compile(optimizer=optimizer, loss=loss, metrics=[metric])
+        self.model.layers[0].trainable=not self.freeze_bert_layer
+        self.model.summary()
+
+        log_dir = './tmp/tensorboard/'
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir)
+        
+        self.callbacks.append(tensorboard_callback)
+
+        history = self.model.fit(self.train_dataset,
+                    shuffle=True,
+                    epochs=epochs,
+                    steps_per_epoch=steps_per_epoch,
+                    validation_data=self.validation_dataset,
+                    validation_steps=validation_steps,
+                    callbacks=self.callbacks,
+                    batch_size=1)
+        
+        self.evaluate_model()
+
 def main():
     train = Train()
     train.read_training_data('output_train_data')
     train.read_validation_data('output_validation_data')
     train.read_test_data('output_test_data')
     train.load_pretrained_bert_model()
+
+    optimization_function = partial(train.optimize)
+    study = optuna.create_study(direction="minimize")
+    study.optimize(optimization_function, n_trials=15)
     train.setup_custom_classifier_model()
-    train.evaluate_model()
+    # train.evaluate_model()
     train.save_model("model")
 
 if __name__ == "__main__":

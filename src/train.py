@@ -227,15 +227,16 @@ class Train():
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir)
         
         self.callbacks.append(tensorboard_callback)
-
+        print("[debug] fit model...................................")
         history = self.model.fit(self.train_dataset,
                     shuffle=True,
                     epochs=epochs,
                     steps_per_epoch=steps_per_epoch,
                     validation_data=self.validation_dataset,
                     validation_steps=validation_steps,
-                    callbacks=self.callbacks,
-                    batch_size=1)
+                    # callbacks=self.callbacks,
+                    batch_size=None,
+                    verbose=2)
         
         self.evaluate_model()
 
@@ -249,7 +250,7 @@ def main():
     optimization_function = partial(train.optimize)
     study = optuna.create_study(direction="minimize")
     study.optimize(optimization_function, n_trials=15)
-    train.setup_custom_classifier_model()
+    # train.setup_custom_classifier_model()
     # train.evaluate_model()
     train.save_model("model")
 

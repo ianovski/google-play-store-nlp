@@ -265,7 +265,37 @@ class Visualize():
         # plt.savefig('proportion_star_per_category.png', dpi=300)
         plt.show()
     
-    
+    def plot_categories_time_series(self):
+        df = self.get_reviews_labelled()
+
+        # Convert int score to float
+        df['score'] = df['score'].astype(float)
+
+        # Sort by date
+        df = df.sort_values(by='date')
+
+        # Convert index to datetime
+        df = df.set_index('date')
+        df.index = pd.to_datetime(df.index)
+
+        # Filter for 2019+
+        # TODO: don't hardcode date
+        df = df[(df.index > '2019-1-1')]
+
+        # Resample for quarterly time series
+        grouped = df.groupby(['category'])
+        data_columns = ['score','category']
+        df_quarterly_mean = grouped[data_columns].resample('Q').mean()
+        
+        # Plot
+        fix, ax = plt.subplots()
+        for key, group in grouped:
+            group['score'].plot(label=key, ax=ax)
+
+        plt.legend(loc='best')
+
+        plt.show()
+
 	# Title: Visualizing Word Vectors with t-SNE
 	# Author: Delaney, J
 	# Date: 2017
@@ -308,7 +338,7 @@ class Visualize():
 
 def main():
     vis = Visualize()
-    vis.read_reviews_csv("reviews.csv")
+    # vis.read_reviews_csv("reviews.csv")
     # vis.plot_word_count("text")
     # stop_words = ["Rogers", "Roger", "app", "phone"]
     # vis.plot_word_cloud("key_phrases.json", stop_words)
@@ -321,9 +351,13 @@ def main():
     # vis.add_keywords('ios', ["ios", "iphone"])
     vis.add_keywords('android', ["android", "pixel", "samsun", "huawei",' lg '])
       
-    vis.plot_mean_ratings(vis.keywords)
-    vis.plot_category_count(vis.keywords)
-    vis.plot_rating_distribution_per_category(vis.keywords)
+    # vis.plot_mean_ratings(vis.keywords)
+    # vis.plot_category_count(vis.keywords)
+    # vis.plot_rating_distribution_per_category(vis.keywords)
+    
+    reviews_labelled = read_csv("labelled_reviews.csv")
+    vis.set_reviews_labelled(reviews_labelled)
+    vis.plot_categories_time_series()
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

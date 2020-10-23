@@ -14,4 +14,4 @@ gplay.reviews({
   appId: 'GOOGLE.APK.NAME',
   sort: gplay.sort.DATE,
   num: 30000
-}).then(writeToFile('reviews.json'), console.error)
+}).then(writeToFile('resources/reviews_new.json'), console.error)

@@ -179,7 +179,7 @@ class Train():
         test_history = self.model.evaluate(self.test_dataset,
                         steps=self.test_steps,                            
                         callbacks=self.callbacks)
-        print(test_history)
+        print("model evaluation: {}".format(test_history))
         
     def save_model(self, filename):
         model_dir = './tmp/'
@@ -211,6 +211,7 @@ class Train():
         wandb.init(project="bert-opt", sync_tensorboard=True,config=hyperparameter_defaults)
     
     def optimize(self,trial):
+
         epochs = trial.suggest_int("epochs",1,3)
         steps_per_epoch=trial.suggest_int("steps_per_epoch",10,100)
         validation_steps=trial.suggest_int("validation_steps",10,100)

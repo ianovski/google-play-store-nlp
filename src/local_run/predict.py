@@ -2,6 +2,8 @@ import json
 from transformers import TFDistilBertForSequenceClassification
 from transformers import DistilBertTokenizer
 from transformers import TextClassificationPipeline
+import pandas as pd
+from pandas import read_csv
 
 class Predict():
     def __init__(self,model_dir):
@@ -45,12 +47,17 @@ class Predict():
     def predict_classification(self,text):
         prediction = self.inference_pipeline(text)
         return self.category_map(str(prediction[0]["label"]))
+
+    def predict_multiple(self,filename,df,text_column):
+        predictions = list(map(self.predict_classification,df[text_column]))
+        print("[debug] Predictions = {}".format(predictions))
     
 def main():
     predict = Predict("./tmp/model")
-    text = "The login does not work"
-    prediction = predict.predict_classification(text)
-    print("text = {} | prediction = {}".format(text,prediction))
+    df = read_csv("labelled_reviews.csv")
+    predict.predict_multiple("test.csv",df,"text")
+    # prediction = predict.predict_classification(text)
+    # print("text = {} | prediction = {}".format(text,prediction))
     
 
 # if __name__ == "__main__":

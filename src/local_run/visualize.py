@@ -133,7 +133,7 @@ class Visualize():
         reviews_labelled['category'] = reviews.apply(lambda row: tm.classify_review_using_keywords(row['text'], labelled_keywords),axis=1)
         return reviews_labelled
 
-    def plot_mean_ratings(self, labelled_keywords):
+    def plot_mean_ratings(self, labelled_keywords, filename):
         tm = Transform()
         num_categories = len(labelled_keywords)
 
@@ -141,7 +141,7 @@ class Visualize():
         reviews_labelled = self.label_reviews(tm, self.get_reviews(), labelled_keywords)
         self.set_reviews_labelled(reviews_labelled)
 
-        self.save_reviews_labelled('labelled_reviews.csv')
+        self.save_reviews_labelled(filename)
 
         mean_ratings = tm.get_mean_rating_for_keywords(reviews_labelled)
         count_ratings = tm.get_category_counts(reviews_labelled)

@@ -24,7 +24,4 @@ result, continuation_token = reviews(
 
 data = pd.DataFrame.from_dict(result)
 
-print("[debug] username = {}".format(result[1]['userName']))
-
-print("[debug] data = {}".format(data))
-
+data.to

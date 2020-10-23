@@ -39,7 +39,8 @@ class Comprehend():
                 if(index!=len(series)):
                     outfile.write(',\n')
                 else:
-                    outfie.write(']')
+                    outfile.write(']')
             index += 1
     
-    
+    # TODO: Edit output JSON file to feed into visualize
+

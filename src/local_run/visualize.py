@@ -100,7 +100,7 @@ class Visualize():
         stop_words.extend(add_stop)
         cloud = WordCloud(stopwords=stop_words,background_color='white',colormap='coolwarm').generate(text)
         plt.imshow(cloud, interpolation='bilinear')
-        plt.title('Word Cloud')
+        plt.title('Word Cloud',fontsize=20)
         plt.axis("off")
         plt.gca().set_facecolor('white')
         plt.show()
@@ -148,17 +148,19 @@ class Visualize():
 
         # Create plot
         barplot = sns.barplot(y=mean_ratings.index, x='score', data = mean_ratings, saturation=1)
-        if num_categories < 10:
-            sns.set(rc={'figure.figsize':(10.0, 5.0)})
+        # if num_categories < 10:
+            # sns.set(rc={'figure.figsize':(10.0, 6.0)})
 
         # Set title and x-axis ticks 
-        plt.title('Average Rating by Product Category')
-        plt.xticks([1, 2, 3, 4, 5], ['1-Star', '2-Star', '3-Star','4-Star','5-Star'])
+        plt.title('Average Rating by Product Category', fontsize=20)
+        plt.xticks([1, 2, 3, 4, 5], ['1-Star', '2-Star', '3-Star','4-Star','5-Star'], fontsize=14)
+        plt.yticks(fontsize=14)
+
 
         # Helper code to show actual values afters bars 
         self.show_values_barplot(barplot, 0.1)
-        plt.xlabel("Average Rating")
-        plt.ylabel("Product Category")
+        plt.xlabel("Average Rating",fontsize=18)
+        plt.ylabel("Product Category",fontsize=18)
 
         # Export plot if needed
         plt.tight_layout()
@@ -188,15 +190,16 @@ class Visualize():
             sns.set(rc={'figure.figsize':(10.0, 5.0)})
 
         # Set title
-        plt.title("Number of Ratings per Product Category for Subset of Product Categories")
+        plt.title("Number of Ratings per Product Category", fontsize=20)
 
         # Set x-axis ticks to match scale 
         xrange = list(range(100,700,100)) # need to generalize this
-        plt.xticks(xrange, map(str,xrange))
+        plt.xticks(xrange, map(str,xrange), fontsize=14)
+        plt.yticks(fontsize=14)
         plt.xlim(0, 720)
 
-        plt.xlabel("Number of Ratings")
-        plt.ylabel("Product Category")
+        plt.xlabel("Number of Ratings",fontsize=18)
+        plt.ylabel("Product Category",fontsize=18)
 
         plt.tight_layout()
 
@@ -254,11 +257,12 @@ class Visualize():
         ax2 = plt.barh(r, proportion_star2, left=proportion_star5+proportion_star4+proportion_star3, color=colors[1], edgecolor='white', height=barHeight, label='2-Star Ratings')
         ax1 = plt.barh(r, proportion_star1, left=proportion_star5+proportion_star4+proportion_star3+proportion_star2, color=colors[0], edgecolor='white', height=barHeight, label="1-Star Ratings")
 
-        plt.title("Distribution of Reviews Per Rating Per Category",fontsize='16')
+        plt.title("Distribution of Reviews Per Rating Per Category",fontsize='20')
         plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
-        plt.yticks(r, categories, fontweight='regular')
+        plt.yticks(r, categories, fontweight='regular',fontsize='14')
+        plt.xticks(fontsize='14')
 
-        plt.xlabel("% Breakdown of Star Ratings", fontsize='14')
+        plt.xlabel("% Breakdown of Star Ratings", fontsize='16')
         plt.gca().invert_yaxis()
         plt.tight_layout()
 

@@ -4,6 +4,7 @@ from google_play_scraper import Sort, reviews_all, reviews
 import pandas as pd
 import json
 import sys
+import os.path
 import azureml.core
 from azureml.core import Workspace, Datastore, Dataset
 from azureml.pipeline.core import PipelineData
@@ -33,21 +34,40 @@ class Extract():
         )
         return result
 
-    def save_result(self, result):
+    def save_result(self, result, filename, src_dir, targ_path):
         # Get file storage associated with the workspace
         def_file_store = Datastore(self.ws, "workspacefilestore")
         datastore = self.ws.get_default_datastore()
+
+        # Prepare dataframe for saving to csv
         data = pd.DataFrame.from_dict(result)
         data.index.name = 'index'
-        filepath = "data/test.csv"
-        output = data.to_csv(filepath)
-        datastore.upload(src_dir='data',target_path='data')
-        dataset = Dataset.Tabular.from_delimited_files(path = [(datastore,("data/test.csv"))])
+
+        # save dataframe to local directory as csv
+        filepath = os.path.join(src_dir,filename)
+        data.to_csv(filepath)
+
+        # upload the local folder from source directory to taget directory
+        datastore.upload(src_dir=src_dir,target_path=targ_path)
+
+        # save dataset in cloud location
+        target_path = os.path.join(targ_path,filename)
+        dataset = Dataset.Tabular.from_delimited_files(path = [(datastore,(target_path))])
+
+        return dataset
+    
+    """ Register datasets with your workspace in order to share them with others and reuse them across experiments in your workspace """
+    def register_dataset(self, dataset, name, description):
+        ds = dataset.register(workspace=self.ws,
+                                 name=name,
+                                 description=description)
 
 def main():
     extract = Extract()
-    result = extract.get_reviews('com.fantome.penguinisle',3)
-    extract.save_result(result)
+    apk = 'com.fantome.penguinisle'
+    result = extract.get_reviews(apk,3)
+    dataset = extract.save_result(result, 'reviews.csv', 'data', 'data')
+    extract.register_dataset(dataset, "reviews", "raw review data")
 
 if __name__== "__main__":
     main()

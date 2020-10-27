@@ -15,8 +15,14 @@ This pipeline was designed to:
 2. Classify reviews based on user-defined categories [complete]
 3. Visualize trends across categories [complete]
 4. Input text to fine-tune an ML model (BERT) [complete]
-5. Generate clusters from resulting word-embeddings [wip]
-6. Automatically classify incoming reviews [wip]
+5. Generate clusters from resulting word-embeddings [complete]
+6. Automatically classify incoming reviews [complete]
+
+Pipeline progress:
+1. Ingest data [complete]
+2. Store data in cloud [wip]
+3. Build model in cloud [wip]
+4. Deploy model [wip]
 
 Features:
 * Apache Spark

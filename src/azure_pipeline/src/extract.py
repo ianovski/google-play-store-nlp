@@ -11,7 +11,7 @@ from azureml.pipeline.core import PipelineData
 
 class Extract():
     def __init__(self):
-        self.ws = Workspace.from_config("resources/config.json")
+        self.ws = Workspace.from_config(".azureml/config.json")
     
     def get_all_reviews(self):
         result = reviews_all(
@@ -62,12 +62,15 @@ class Extract():
                                  name=name,
                                  description=description)
 
-def main():
+def run():
     extract = Extract()
     apk = 'com.fantome.penguinisle'
+    print("Extracting reviews")
     result = extract.get_reviews(apk,3)
+    print("Saving Azure dataset")
     dataset = extract.save_result(result, 'reviews.csv', 'data', 'data')
+    print("Registering Azure dataset")
     extract.register_dataset(dataset, "reviews", "raw review data")
 
-if __name__== "__main__":
-    main()
+# if __name__== "__main__":
+#     run()

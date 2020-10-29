@@ -20,7 +20,7 @@ This pipeline was designed to:
 
 Pipeline progress:
 1. Ingest data [complete]
-2. Store data in cloud [wip]
+2. Store data in cloud [complete]
 3. Build model in cloud [wip]
 4. Deploy model [wip]
 
